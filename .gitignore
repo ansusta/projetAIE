@@ -3,13 +3,6 @@ node_modules/
 frontend/frontend/node_modules/
 backend/node_modules/
 
-
-venv/
-ai-service/venv/
-__pycache__/
-*.pyc
-
-
 .env
 
 
