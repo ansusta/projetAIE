@@ -18,11 +18,6 @@ const preferenceSchema = new mongoose.Schema({
   disponibilite: Date
 })
 
-const cvSchema = new mongoose.Schema({
-  resume: String,
-  derniereMisAjour: Date
-})
-
 const utilisateurSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   motDePasse: { type: String, required: true },
@@ -39,7 +34,7 @@ const utilisateurSchema = new mongoose.Schema({
   bio: String,
   adresse: adresseSchema,
   preference: preferenceSchema,
-  cv: cvSchema,
+  idCv: { type: mongoose.Schema.Types.ObjectId, ref: 'Document' }, // ✅
 
   // recruteur-specific
   nomEntreprise: String,

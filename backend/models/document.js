@@ -1,14 +1,23 @@
 const mongoose = require('mongoose')
 
 const documentSchema = new mongoose.Schema({
-  fileId: { type: mongoose.Schema.Types.ObjectId, required: true }, // GridFS file id
+  fileId: { type: mongoose.Schema.Types.ObjectId, required: true },
   nomFichier: String,
   formatFichier: String,
   taille: Number,
   dateUpload: { type: Date, default: Date.now },
-  type: { type: String, enum: ['docSupp', 'docRecruteur'] },
+type: { 
+    type: String, 
+    enum: ['cv', 'docsupp', 'docrecruteur'],
+    lowercase: true,
+    trim: true      
+  },
 
-  // if docSupp
+  // if cv
+  resume: String,
+  derniereMisAjour: Date,
+
+  // if cv or docSupp
   idCandidat: { type: mongoose.Schema.Types.ObjectId, ref: 'Utilisateur' },
   typeFichier: String,
 

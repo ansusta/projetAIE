@@ -14,7 +14,11 @@ const candidatureSchema = new mongoose.Schema({
     default: 'Recue'
   },
   idCandidat: { type: mongoose.Schema.Types.ObjectId, ref: 'Utilisateur', required: true },
-  idOffre: { type: mongoose.Schema.Types.ObjectId, ref: 'OffreTravail', required: true },
+  idOffre: { type: mongoose.Schema.Types.ObjectId, ref: 'OffreTravail', required: true }, 
+idDocSup: [{ 
+  type: mongoose.Schema.Types.ObjectId, 
+  ref: 'Document' 
+}],
   entretien: entretienSchema
 })
 

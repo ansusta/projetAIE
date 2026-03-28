@@ -1,7 +1,135 @@
 const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken")
 const Utilisateur = require("../models/Utilisateur")
+const cloudinary = require("../config/cloud");
+const { Readable } = require("stream");
 
+// Helper for Cloudinary Buffer Upload
+const streamUpload = (buffer) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: "profile_pics" },
+      (error, result) => {
+        if (result) resolve(result);
+        else reject(error);
+      }
+    );
+    Readable.from(buffer).pipe(stream);
+  });
+};
+
+// ─── UPDATE PROFILE ───────────────────────────────────────
+const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    let updateData = { ...req.body };
+
+    // 1. Handle Profile Picture if a file is uploaded
+    if (req.file) {
+      const result = await streamUpload(req.file.buffer);
+      updateData.photoProfil = result.secure_url;
+    }
+
+    // 2. Prevent users from changing sensitive fields via this route
+    delete updateData.motDePasse;
+    delete updateData.role;
+    delete updateData.email;
+    delete updateData.etatValidation;
+
+    // 3. Update the user
+    const updatedUser = await Utilisateur.findByIdAndUpdate(
+      userId,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) return res.status(404).json({ error: "User not found" });
+
+    res.json({
+      message: "Profile updated successfully",
+      user: {
+        id: updatedUser._id,
+        photoProfil: updatedUser.photoProfil,
+        nom: updatedUser.nom || updatedUser.nomEntreprise,
+        bio: updatedUser.bio,
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const getMe = async (req, res) => {
+  try {
+    // req.user is already populated by authenticate middleware
+    const user = req.user
+
+    const base = {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+      telephone: user.telephone,
+      statusCompte: user.statusCompte,
+      adresse: user.adresse,
+      createdAt: user.createdAt,
+      photoProfil: user.photoProfil
+    }
+
+    if (user.role === "candidat") {
+      return res.json({
+        ...base,
+        nom: user.nom,
+        prenom: user.prenom,
+        dateNaissance: user.dateNaissance,
+        bio: user.bio
+      })
+    }
+
+    if (user.role === "recruteur") {
+      return res.json({
+        ...base,
+        nomEntreprise: user.nomEntreprise,
+        descriptionEntreprise: user.descriptionEntreprise,
+        secteurActivite: user.secteurActivite,
+        etatValidation: user.etatValidation
+      })
+    }
+
+    // admin
+    res.json(base)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
+
+// ─── CHANGE PASSWORD ──────────────────────────────────────
+const changePassword = async (req, res) => {
+  try {
+    console.log("Headers:", req.headers['content-type']);
+  console.log("Body:", req.body);
+    const { ancienMotDePasse, nouveauMotDePasse } = req.body
+
+    if (!ancienMotDePasse || !nouveauMotDePasse)
+      return res.status(400).json({ error: "Both fields are required" })
+
+    if (nouveauMotDePasse.length < 6)
+      return res.status(400).json({ error: "Password must be at least 6 characters" })
+
+    // Fetch with password (req.user comes without it from middleware)
+    const user = await Utilisateur.findById(req.user._id)
+
+    const isMatch = await bcrypt.compare(ancienMotDePasse, user.motDePasse)
+    if (!isMatch)
+      return res.status(401).json({ error: "Current password is incorrect" })
+
+    user.motDePasse = await bcrypt.hash(nouveauMotDePasse, 10)
+    await user.save()
+
+    res.json({ message: "Password updated successfully" })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
 // ─── SIGNUP CANDIDAT ──────────────────────────────────────
 const signupCandidat = async (req, res) => {
   try {
@@ -143,4 +271,4 @@ const login = async (req, res) => {
   }
 }
 
-module.exports = { signupCandidat, signupRecruteur, login }
+module.exports = { signupCandidat, signupRecruteur, login, getMe, changePassword, updateProfile }
