@@ -10,9 +10,11 @@ const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
 const connectDB = require("./config/db");
-const Utilisateur = require('./models/Utilisateur')
-const authRoutes = require('./routes/auth.routes')
-
+const Utilisateur = require('./models/Utilisateur');
+const authRoutes = require('./routes/auth.routes');
+const offreRoutes = require('./routes/offre.route');
+const candidatureRoutes = require('./routes/candidature.routes');
+const adminRoutes = require('./routes/admin.routes')
 const app = express();
 
 app.use(cors());
@@ -52,13 +54,17 @@ app.post("/api/test/user", async (req, res) => {
   } catch (error) {
     res.status(400).json({ error: error.message })
   }
-})
+});
 
-app.use('/api/documents', documentRoutes)
+app.use('/api/documents', documentRoutes);
 
 
 
-app.use('/api/auth', authRoutes)
+app.use('/api/auth', authRoutes);
+app.use('/api/offre', offreRoutes);
+app.use('/api/candidature', candidatureRoutes);
+app.use('/api/admin', adminRoutes);
+
 // After your routes
 app.use((err, req, res, next) => {
   if (err.name === "MulterError" || err.message.includes("Only PDF")) {
