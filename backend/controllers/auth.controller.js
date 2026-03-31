@@ -271,4 +271,32 @@ const login = async (req, res) => {
   }
 }
 
-module.exports = { signupCandidat, signupRecruteur, login, getMe, changePassword, updateProfile }
+// ─── GET PUBLIC PROFILE ───────────────────────────────────
+const getProfilPublic = async (req, res) => {
+  try {
+    const user = await Utilisateur.findById(req.params.id)
+      .select('nom prenom bio nomEntreprise secteurActivite adresse role photoProfil')
+    if (!user) return res.status(404).json({ error: 'User not found' })
+    res.json(user)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
+
+// ─── UPDATE PREFERENCES (candidat only) ──────────────────
+const mettreAJourPreferences = async (req, res) => {
+  try {
+    if (req.user.role !== 'candidat')
+      return res.status(403).json({ error: 'Only candidates have preferences' })
+
+    const user = await Utilisateur.findById(req.user._id)
+    user.preference = { ...(user.preference?.toObject() || {}), ...req.body }
+    await user.save()
+
+    res.json(user.preference)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
+
+module.exports = { signupCandidat, signupRecruteur, login, getMe, changePassword, updateProfile, getProfilPublic, mettreAJourPreferences }
