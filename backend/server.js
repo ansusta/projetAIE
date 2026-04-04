@@ -16,6 +16,7 @@ const offreRoutes = require('./routes/offre.route');
 const candidatureRoutes = require('./routes/candidature.routes');
 const adminRoutes = require('./routes/admin.routes')
 const notificationRoutes = require('./routes/notification.routes')
+const matchRoutes = require ('./routes/match.routes');
 const app = express();
 
 app.use(cors());
@@ -66,6 +67,7 @@ app.use('/api/offre', offreRoutes);
 app.use('/api/candidature', candidatureRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notification', notificationRoutes)
+app.use('/api/match', matchRoutes);
 
 // After your routes
 app.use((err, req, res, next) => {

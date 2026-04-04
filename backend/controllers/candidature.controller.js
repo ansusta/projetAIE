@@ -1,6 +1,7 @@
 const Candidature  = require('../models/Candidature')
 const OffreTravail = require('../models/OffreTravail')
 const { createNotification } = require('../utils/notification')
+const Match = require('../models/Match')
 
 // POST /api/candidatures
 const soumettreCandidature = async (req, res) => {
@@ -148,7 +149,65 @@ const planifierEntretien = async (req, res) => {
   }
 }
 
+
+// GET /api/candidatures/recruteur/grouped
+const getCandidaturesGrouped = async (req, res) => {
+  try {
+    const offres   = await OffreTravail.find({ idRecruteur: req.user._id }).select('_id')
+    const offreIds = offres.map(o => o._id)
+
+    const candidatures = await Candidature.find({ idOffre: { $in: offreIds } })
+      .populate('idCandidat', 'nom prenom email telephone photoProfil')
+      .populate('idOffre', 'titre')
+      .sort({ dateCandidature: -1 })
+
+    // attach match score where it exists
+    const withScores = await Promise.all(
+      candidatures.map(async (c) => {
+        const match = await Match.findOne({
+          idCandidat: c.idCandidat._id,
+          idOffre:    c.idOffre._id
+        })
+        return {
+          ...c.toObject(),
+          matchScore:      match ? Math.round(match.score * 100) : null,
+          typePostulation: match ? 'matching' : 'manuelle'
+        }
+      })
+    )
+
+    res.json({
+      matching: withScores.filter(c => c.typePostulation === 'matching')
+                          .sort((a, b) => b.matchScore - a.matchScore),
+      manuelle: withScores.filter(c => c.typePostulation === 'manuelle')
+    })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
+
+// GET /api/candidatures/entretiens — recruteur interview calendar
+const getEntretiens = async (req, res) => {
+  try {
+    const offres   = await OffreTravail.find({ idRecruteur: req.user._id }).select('_id titre')
+    const offreIds = offres.map(o => o._id)
+
+    const candidatures = await Candidature.find({
+      idOffre:         { $in: offreIds },
+      etatCandidature: 'convocationEntretien',
+      'entretien.dateEntretien': { $exists: true }
+    })
+    .populate('idCandidat', 'nom prenom email telephone')
+    .populate('idOffre', 'titre')
+    .sort({ 'entretien.dateEntretien': 1 })
+
+    res.json(candidatures)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
+
 module.exports = {
   soumettreCandidature, mesCandidatures, candidaturesParOffre,
-  getCandidature, mettreAJourStatut, planifierEntretien
+  getCandidature, mettreAJourStatut, planifierEntretien , getEntretiens, getCandidaturesGrouped
 }

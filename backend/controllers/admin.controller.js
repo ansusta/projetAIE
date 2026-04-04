@@ -1,6 +1,6 @@
 const Utilisateur = require('../models/Utilisateur')
 const { createNotification } = require('../utils/notification')
-
+const Candidature = require('../models/Candidature')
 // GET /api/admin/users
 const listerUtilisateurs = async (req, res) => {
   try {
@@ -103,4 +103,25 @@ const supprimerUtilisateur = async (req, res) => {
   }
 }
 
-module.exports = { listerUtilisateurs, recruteursEnAttente, getUtilisateur, validerRecruteur, toggleSuspension, supprimerUtilisateur }
+const toutesLesCandidatures = async (req, res) => {
+  try {
+    const { etatCandidature, page = 1, limit = 20 } = req.query
+    const filter = {}
+    if (etatCandidature) filter.etatCandidature = etatCandidature
+
+    const total = await Candidature.countDocuments(filter)
+    const candidatures = await Candidature.find(filter)
+      .populate('idCandidat', 'nom prenom email')
+      .populate('idOffre', 'titre idRecruteur')
+      .sort({ dateCandidature: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit))
+
+    res.json({ candidatures, total, page: Number(page), pages: Math.ceil(total / limit) })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
+
+
+module.exports = { listerUtilisateurs, recruteursEnAttente, getUtilisateur, validerRecruteur, toggleSuspension, supprimerUtilisateur, toutesLesCandidatures }
