@@ -1,7 +1,10 @@
 import React from 'react';
 import { Sparkles, Target, Zap, Shield, Users, Building2, Check, TrendingUp, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import Logo from '../components/Logo';
 
 const LandingPage = () => {
+  const navigate = useNavigate();
   return (
     // The soft background applied to the whole page, exactly like Figma
     <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900">
@@ -11,19 +14,7 @@ const LandingPage = () => {
         
         {/* Left: Logo */}
         <div className="flex justify-start">
-          <div className="flex items-center gap-2 group cursor-pointer">
-            <div className="relative flex items-center justify-center w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-lg shadow-blue-200">
-              <Target className="w-6 h-6 text-white" strokeWidth={2.5} />
-            </div>
-            <div className="flex flex-col leading-none">
-              <span className="text-xl font-black tracking-tight text-slate-900">
-                Match<span className="text-blue-600">Talent</span>
-              </span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">
-                AI Powered
-              </span>
-            </div>
-          </div>
+          <Logo />
         </div>
 
         {/* Center: Navigation Links */}
@@ -32,13 +23,22 @@ const LandingPage = () => {
           <a href="#" className="hover:text-blue-600 transition-colors">À propos</a>
         </nav>
 
-        {/* Right: Button */}
-        <div className="flex justify-end">
-        <button className="bg-blue-600 text-white px-6 py-2.5 rounded-full text-sm font-semibold hover:bg-blue-500 hover:shadow-lg hover:shadow-blue-600/30 transition-all cursor-pointer">
-  Connexion
-</button>
-        </div>
-
+        {/* Top Right Navigation Actions */}
+        <div className="flex justify-end items-center gap-2 sm:gap-4">
+          <button 
+            onClick={() => navigate('/login')} 
+            className="px-4 py-2 text-slate-600 hover:text-slate-900 font-medium transition-colors"
+          >
+            Connexion
+          </button>
+          
+          <button 
+            onClick={() => navigate('/register')} 
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-2.5 rounded-xl font-medium transition-all duration-300 shadow-md shadow-blue-600/20 hover:shadow-blue-600/40"
+          >
+            S'inscrire
+          </button>
+        </div>        
       </header>
       {/* 1. HERO SECTION */}
       <section className="pt-20 pb-24 px-6 text-center max-w-5xl mx-auto">
@@ -57,7 +57,7 @@ const LandingPage = () => {
         </p>
 
         <div className="flex flex-col items-center justify-center gap-4">
-          <button className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl text-lg font-bold hover:from-blue-700 hover:to-indigo-700 hover:scale-105 transition-all shadow-xl shadow-indigo-200 flex items-center gap-2 cursor-pointer">
+          <button onClick={() => navigate('/register')} className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl text-lg font-bold hover:from-blue-700 hover:to-indigo-700 hover:scale-105 transition-all shadow-xl shadow-indigo-200 flex items-center gap-2 cursor-pointer">
             Commencer gratuitement <ArrowRight className="w-5 h-5" />
           </button>
           <p className="text-sm text-slate-500">
@@ -152,7 +152,7 @@ const LandingPage = () => {
               <li className="flex items-center gap-3 text-slate-600"><Check className="w-5 h-5 text-blue-600 flex-shrink-0" /> Alertes en temps réel pour les nouvelles opportunités</li>
               <li className="flex items-center gap-3 text-slate-600"><Check className="w-5 h-5 text-blue-600 flex-shrink-0" /> Suivi de vos candidatures en un coup d'œil</li>
             </ul>
-            <button className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transition-colors cursor-pointer">
+            <button onClick={() => navigate('/register', { state: { role: 'candidate' } })} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transition-colors cursor-pointer">
               Je cherche un emploi
             </button>
           </div>
@@ -171,7 +171,7 @@ const LandingPage = () => {
               <li className="flex items-center gap-3 text-slate-600"><Check className="w-5 h-5 text-indigo-600 flex-shrink-0" /> Matching intelligent basé sur vos critères</li>
               <li className="flex items-center gap-3 text-slate-600"><Check className="w-5 h-5 text-indigo-600 flex-shrink-0" /> Gestion simplifiée de vos offres d'emploi</li>
             </ul>
-            <button className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition-colors cursor-pointer">
+            <button onClick={() => navigate('/register', { state: { role: 'recruiter' } })} className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition-colors cursor-pointer">
               Je recrute des talents
             </button>
           </div>
@@ -234,7 +234,7 @@ const LandingPage = () => {
           <p className="text-blue-100 text-lg md:text-xl mb-10">
             Rejoignez des milliers de professionnels qui ont déjà trouvé leur match parfait
           </p>
-          <button className="bg-white text-blue-600 px-8 py-4 rounded-xl text-lg font-bold hover:bg-slate-50 transition-colors flex items-center gap-2 cursor-pointer shadow-xl">
+          <button onClick={() => navigate('/register')} className="bg-white text-blue-600 px-8 py-4 rounded-xl text-lg font-bold hover:bg-slate-50 transition-colors flex items-center gap-2 cursor-pointer shadow-xl">
             Commencer maintenant <ArrowRight className="w-5 h-5" />
           </button>
         </div>
