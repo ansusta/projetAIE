@@ -5,6 +5,7 @@ require('./models/Candidature')
 require('./models/Notification')
 require('./models/Document')
 require('./models/Match')
+require('./models/CV')  
 const documentRoutes = require('./routes/document.routes')
 const express = require("express");
 const cors = require("cors");
@@ -17,6 +18,7 @@ const candidatureRoutes = require('./routes/candidature.routes');
 const adminRoutes = require('./routes/admin.routes')
 const notificationRoutes = require('./routes/notification.routes')
 const matchRoutes = require ('./routes/match.routes');
+const cvRoutes           = require('./routes/cv.routes')  
 const app = express();
 
 app.use(cors());
@@ -68,6 +70,7 @@ app.use('/api/candidature', candidatureRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notification', notificationRoutes)
 app.use('/api/match', matchRoutes);
+app.use('/api/cv',           cvRoutes)     
 
 // After your routes
 app.use((err, req, res, next) => {
