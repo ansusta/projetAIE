@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { User, Briefcase, Eye, EyeOff, ChevronLeft, Upload, MapPin, Calendar, FileText, CheckCircle, Building, Globe, Sparkles, Lock, ArrowRight } from 'lucide-react';
+import { User, Briefcase, Eye, EyeOff, ChevronLeft, Building, Sparkles, CheckCircle, MapPin, FileText, Phone, Calendar } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react'; 
+import { authService } from '../services/auth.service';
 
 export default function RegisterPage() {
   const location = useLocation();
@@ -11,46 +12,65 @@ export default function RegisterPage() {
   const [role, setRole] = useState(initialRole);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   
   const [formData, setFormData] = useState({
+    // Shared
     email: '',
     password: '',
     phone: '',
-    firstName: '',
-    lastName: '',
+    // Address (matches new nested schema needs)
     streetNumber: '',
     streetName: '',
+    addressComplement: '',
     zipCode: '',
     city: '',
-    country: 'France',
+    region: '',
+    country: 'France', // Defaulted to France
+    // Candidate specific
+    firstName: '',
+    lastName: '',
+    birthDate: '',
+    bio: '',
+    // Recruiter specific
     companyName: '',
     industry: '',
-    companySize: '',
-    website: '',
+    description: '',
   });
 
-  const handleNext = () => setStep((prev) => prev + 1);
-  const handleBack = () => setStep((prev) => prev - 1);
+  const handleNext = () => {
+    setError('');
+    setStep((prev) => prev + 1);
+  };
+  
+  const handleBack = () => {
+    setError('');
+    setStep((prev) => prev - 1);
+  };
+  
   const navigate = useNavigate();
 
-  // --- FONCTION DE SOUMISSION PROFESSIONNELLE ---
   const handleRegister = async (e) => {
     if (e) e.preventDefault(); 
     setIsLoading(true);
-    
-    // Simulation d'appel API de création de compte
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsLoading(false);
-    
-    // Redirection Intelligente
-    if (role === 'candidate') {
-      navigate('/onboarding'); // Le candidat va vers le multi-step form pro
-    } else {
-      navigate('/dashboard'); // Le recruteur va à son espace
+    setError('');
+
+    try {
+      if (role === 'candidate') {
+        // No need to concatenate address anymore, authService handles it!
+        await authService.registerCandidate(formData);
+        navigate('/onboarding');
+      } else {
+        await authService.registerRecruiter(formData);
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || err.response?.data?.message || "Une erreur est survenue lors de l'inscription.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // --- ÉTAPE 0 : CHOIX DU RÔLE ---
   const renderRoleSelection = () => (
     <div className="flex flex-col items-center animate-fade-in">
       <div className="text-center mb-12">
@@ -84,7 +104,6 @@ export default function RegisterPage() {
     </div>
   );
 
-  // --- PARCOURS CANDIDAT : ÉTAPE UNIQUE (Identifiants) ---
   const renderCandidateStep1 = () => (
     <div className="bg-white p-10 rounded-3xl shadow-2xl shadow-blue-900/10 w-full max-w-xl animate-fade-in">
       <h2 className="text-3xl font-bold text-slate-900 mb-2">Créez votre compte</h2>
@@ -93,31 +112,22 @@ export default function RegisterPage() {
       <div className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">Adresse email</label>
-          <input 
-            type="email" 
-            placeholder="exemple@email.com"
-            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all"
-            value={formData.email}
-            onChange={(e) => setFormData({...formData, email: e.target.value})}
-          />
+          <input type="email" placeholder="exemple@email.com" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-600 outline-none" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
         </div>
-
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">Mot de passe</label>
           <div className="relative">
-            <input 
-              type={showPassword ? "text" : "password"} 
-              placeholder="Créez un mot de passe sécurisé"
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all pr-12"
-              value={formData.password}
-              onChange={(e) => setFormData({...formData, password: e.target.value})}
-            />
-            <button 
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-            >
+            <input type={showPassword ? "text" : "password"} placeholder="Créez un mot de passe sécurisé" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-600 outline-none pr-12" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} />
+            <button onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
               {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">Téléphone</label>
+          <div className="relative">
+            <Phone className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+            <input type="tel" placeholder="06 12 34 56 78" className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-600 outline-none" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
           </div>
         </div>
       </div>
@@ -126,29 +136,84 @@ export default function RegisterPage() {
         <button onClick={handleBack} className="flex items-center text-slate-500 hover:text-slate-800 font-medium transition-colors">
           <ChevronLeft className="w-5 h-5 mr-1" /> Retour
         </button>
-        <button 
-          onClick={handleRegister} 
-          disabled={isLoading}
-          className={`flex items-center justify-center gap-2 px-8 py-3 rounded-xl font-semibold transition-all w-1/2 ${
-            isLoading ? 'bg-blue-400 cursor-not-allowed text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'
-          }`}
-        >
-          {isLoading ? (
-            <><Loader2 className="w-5 h-5 animate-spin" /> Création...</>
-          ) : (
-            "Créer mon compte"
-          )}
+        <button onClick={handleNext} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-semibold transition-colors w-1/2">
+          Continuer
         </button>
       </div>
     </div>
   );
 
-  // --- PARCOURS RECRUTEUR ---
+  const renderCandidateStep2 = () => (
+    <div className="bg-white p-10 rounded-3xl shadow-2xl shadow-blue-900/10 w-full max-w-xl animate-fade-in">
+      <h2 className="text-3xl font-bold text-slate-900 mb-2">Vos informations</h2>
+      <p className="text-slate-500 mb-6">Parlez-nous un peu de vous</p>
+
+      {error && <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm rounded-r-lg">{error}</div>}
+
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Prénom</label>
+            <input type="text" placeholder="Jean" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-600 outline-none" value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Nom</label>
+            <input type="text" placeholder="Dupont" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-600 outline-none" value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">Date de naissance</label>
+          <div className="relative">
+            <Calendar className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+            <input type="date" className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-600 outline-none" value={formData.birthDate} onChange={(e) => setFormData({...formData, birthDate: e.target.value})} />
+          </div>
+        </div>
+
+        {/* --- NOUVEAU BLOC ADRESSE --- */}
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-4">
+          <p className="text-sm font-semibold text-slate-700 flex items-center gap-2"><MapPin className="w-4 h-4" /> Votre Adresse</p>
+          <div className="grid grid-cols-4 gap-4">
+            <div className="col-span-1">
+              <label className="block text-xs font-medium text-slate-500 mb-1">N°</label>
+              <input type="text" placeholder="12" className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-600 outline-none" value={formData.streetNumber} onChange={(e) => setFormData({...formData, streetNumber: e.target.value})} />
+            </div>
+            <div className="col-span-3">
+              <label className="block text-xs font-medium text-slate-500 mb-1">Nom de la rue</label>
+              <input type="text" placeholder="Rue de la Paix" className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-600 outline-none" value={formData.streetName} onChange={(e) => setFormData({...formData, streetName: e.target.value})} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Code Postal</label>
+              <input type="text" placeholder="75000" className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-600 outline-none" value={formData.zipCode} onChange={(e) => setFormData({...formData, zipCode: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Ville</label>
+              <input type="text" placeholder="Paris" className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-600 outline-none" value={formData.city} onChange={(e) => setFormData({...formData, city: e.target.value})} />
+            </div>
+          </div>
+        </div>
+        {/* ---------------------------- */}
+
+      </div>
+
+      <div className="flex items-center justify-between mt-10">
+        <button onClick={handleBack} className="flex items-center text-slate-500 hover:text-slate-800 font-medium transition-colors">
+          <ChevronLeft className="w-5 h-5 mr-1" /> Retour
+        </button>
+        <button onClick={handleRegister} disabled={isLoading} className={`flex items-center justify-center gap-2 px-8 py-3 rounded-xl font-semibold transition-all w-1/2 ${isLoading ? 'bg-blue-400 cursor-not-allowed text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}>
+          {isLoading ? <><Loader2 className="w-5 h-5 animate-spin" /> Création...</> : "Créer mon compte"}
+        </button>
+      </div>
+    </div>
+  );
+
   const renderRecruiterStep1 = () => (
     <div className="bg-white p-10 rounded-3xl shadow-2xl shadow-blue-900/10 w-full max-w-xl animate-fade-in">
       <h2 className="text-3xl font-bold text-slate-900 mb-2">Compte Recruteur</h2>
       <p className="text-slate-500 mb-8">Commençons par vos informations de connexion</p>
-      {/* Mêmes champs email/mot de passe que candidat */}
+      
       <div className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">Adresse email</label>
@@ -163,7 +228,15 @@ export default function RegisterPage() {
             </button>
           </div>
         </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">Téléphone professionnel</label>
+          <div className="relative">
+            <Phone className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+            <input type="tel" placeholder="01 23 45 67 89" className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
+          </div>
+        </div>
       </div>
+      
       <div className="flex items-center justify-between mt-10">
         <button onClick={handleBack} className="flex items-center text-slate-500 hover:text-slate-800 font-medium transition-colors">
           <ChevronLeft className="w-5 h-5 mr-1" /> Retour
@@ -181,24 +254,59 @@ export default function RegisterPage() {
         <Building className="w-8 h-8 text-indigo-600" />
         <h2 className="text-3xl font-bold text-slate-900">Informations entreprise</h2>
       </div>
-      <p className="text-slate-500 mb-8">Présentez votre entreprise</p>
-      <div className="space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">Nom de l'entreprise</label>
-          <input type="text" placeholder="Nom de votre entreprise" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none" value={formData.companyName} onChange={(e) => setFormData({...formData, companyName: e.target.value})} />
+      <p className="text-slate-500 mb-6">Présentez votre entreprise</p>
+      
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Nom de l'entreprise</label>
+            <input type="text" placeholder="Ex: TechCorp" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none" value={formData.companyName} onChange={(e) => setFormData({...formData, companyName: e.target.value})} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Secteur d'activité</label>
+            <select className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none bg-white" value={formData.industry} onChange={(e) => setFormData({...formData, industry: e.target.value})}>
+              <option value="">Sélectionnez</option>
+              <option>Informatique / Digital</option>
+              <option>Finance</option>
+              <option>Santé</option>
+              <option>Autre</option>
+            </select>
+          </div>
         </div>
+
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">Secteur d'activité</label>
-          <select className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none bg-white" value={formData.industry} onChange={(e) => setFormData({...formData, industry: e.target.value})}>
-            <option value="">Sélectionnez un secteur</option>
-            <option>Informatique / Digital</option>
-            <option>Finance</option>
-            <option>Santé</option>
-            <option>Autre</option>
-          </select>
+          <label className="block text-sm font-medium text-slate-700 mb-2">Description rapide</label>
+          <textarea rows="2" placeholder="Que fait votre entreprise ?" className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none resize-none" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})}></textarea>
         </div>
+
+        {/* --- NOUVEAU BLOC ADRESSE RECRUTEUR --- */}
+        <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100/50 space-y-4">
+          <p className="text-sm font-semibold text-slate-700 flex items-center gap-2"><MapPin className="w-4 h-4 text-indigo-500" /> Siège Social</p>
+          <div className="grid grid-cols-4 gap-4">
+            <div className="col-span-1">
+              <label className="block text-xs font-medium text-slate-500 mb-1">N°</label>
+              <input type="text" placeholder="12" className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none" value={formData.streetNumber} onChange={(e) => setFormData({...formData, streetNumber: e.target.value})} />
+            </div>
+            <div className="col-span-3">
+              <label className="block text-xs font-medium text-slate-500 mb-1">Nom de la rue</label>
+              <input type="text" placeholder="Avenue de l'Entreprise" className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none" value={formData.streetName} onChange={(e) => setFormData({...formData, streetName: e.target.value})} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Code Postal</label>
+              <input type="text" placeholder="75008" className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none" value={formData.zipCode} onChange={(e) => setFormData({...formData, zipCode: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Ville</label>
+              <input type="text" placeholder="Paris" className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none" value={formData.city} onChange={(e) => setFormData({...formData, city: e.target.value})} />
+            </div>
+          </div>
+        </div>
+        {/* ---------------------------- */}
       </div>
-      <div className="flex items-center justify-between mt-10">
+
+      <div className="flex items-center justify-between mt-8">
         <button onClick={handleBack} className="flex items-center text-slate-500 hover:text-slate-800 font-medium transition-colors">
           <ChevronLeft className="w-5 h-5 mr-1" /> Retour
         </button>
@@ -215,8 +323,10 @@ export default function RegisterPage() {
         <Sparkles className="w-8 h-8 text-indigo-600" />
         <h2 className="text-3xl font-bold text-slate-900">Documents entreprise</h2>
       </div>
-      <p className="text-indigo-600 font-medium mb-8">Dernière étape pour vérifier votre compte</p>
+      <p className="text-indigo-600 font-medium mb-6">Dernière étape pour vérifier votre compte</p>
       
+      {error && <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm rounded-r-lg">{error}</div>}
+
       <div className="border-2 border-dashed border-indigo-200 bg-indigo-50/30 rounded-2xl p-10 flex flex-col items-center justify-center text-center hover:bg-indigo-50 transition-colors cursor-pointer mb-8">
         <div className="mb-4">
           <Building className="w-12 h-12 text-slate-400" />
@@ -257,10 +367,13 @@ export default function RegisterPage() {
 
       {step === 0 && renderRoleSelection()}
       
-      {/* Flux Candidat Ultra Rapide (1 seule étape -> Onboarding) */}
-      {role === 'candidate' && step === 1 && renderCandidateStep1()}
+      {role === 'candidate' && (
+        <>
+          {step === 1 && renderCandidateStep1()}
+          {step === 2 && renderCandidateStep2()}
+        </>
+      )}
 
-      {/* Flux Recruteur (3 étapes -> Dashboard) */}
       {role === 'recruiter' && (
         <>
           {step === 1 && renderRecruiterStep1()}

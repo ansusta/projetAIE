@@ -61,8 +61,7 @@ const updateProfile = async (req, res) => {
 
 const getMe = async (req, res) => {
   try {
-    // req.user is already populated by authenticate middleware
-    const user = req.user
+    const user = req.user;
 
     const base = {
       id: user._id,
@@ -73,7 +72,7 @@ const getMe = async (req, res) => {
       adresse: user.adresse,
       createdAt: user.createdAt,
       photoProfil: user.photoProfil
-    }
+    };
 
     if (user.role === "candidat") {
       return res.json({
@@ -81,8 +80,10 @@ const getMe = async (req, res) => {
         nom: user.nom,
         prenom: user.prenom,
         dateNaissance: user.dateNaissance,
-        bio: user.bio
-      })
+        bio: user.bio,
+        // Add the preferences here so the frontend can see them
+        preferences: user.preference || {} 
+      });
     }
 
     if (user.role === "recruteur") {
@@ -92,15 +93,14 @@ const getMe = async (req, res) => {
         descriptionEntreprise: user.descriptionEntreprise,
         secteurActivite: user.secteurActivite,
         etatValidation: user.etatValidation
-      })
+      });
     }
 
-    // admin
-    res.json(base)
+    res.json(base);
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
-}
+};
 
 // ─── CHANGE PASSWORD ──────────────────────────────────────
 const changePassword = async (req, res) => {

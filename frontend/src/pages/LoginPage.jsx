@@ -2,10 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import Logo from '../components/Logo';
+import { authService } from '../services/auth.service'; // <-- Import the service
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState(''); // <-- Add state for error messages
+  const [isLoading, setIsLoading] = useState(false); // <-- Add loading state
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -15,28 +18,46 @@ export default function LoginPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // For now, we just prevent the page reload. 
-    // Later, this is where you'll call your backend API!
-    console.log("Login attempted with:", formData);
+    setError('');
+    setIsLoading(true);
+
+    try {
+      // Call your backend API
+      const data = await authService.login(formData);
+      console.log("Login successful!", data);
+      
+      // Redirect to dashboard on success
+      navigate('/dashboard');
+    } catch (err) {
+      // Handle errors (e.g., wrong password, user not found)
+      setError(err.response?.data?.message || 'Une erreur est survenue lors de la connexion.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 sm:p-8">
       
-      {/* Clickable Logo to return home */}
       <div className="mb-8 cursor-pointer flex justify-center hover:opacity-80 transition-opacity" onClick={() => navigate('/')}>
         <Logo />
       </div>
 
-      {/* Login Card */}
       <div className="bg-white p-8 sm:p-10 rounded-3xl shadow-2xl shadow-blue-900/10 w-full max-w-md animate-fade-in">
         
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-slate-900 mb-2">Bon retour !</h2>
           <p className="text-slate-500">Connectez-vous pour accéder à votre espace.</p>
         </div>
+
+        {/* Display Error Message if it exists */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg text-center">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Email Input */}
@@ -91,14 +112,14 @@ export default function LoginPage() {
 
           {/* Submit Button */}
           <button 
-            onClick={() => navigate('/dashboard')} 
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700"
+            type="submit" 
+            disabled={isLoading}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 disabled:bg-blue-400 transition-colors"
           >
-            Se connecter
+            {isLoading ? 'Connexion...' : 'Se connecter'}
           </button>
         </form>
 
-        {/* Link to Registration */}
         <div className="mt-8 text-center">
           <p className="text-slate-600 text-sm">
             Pas encore de compte ?{' '}
