@@ -90,9 +90,9 @@ export default function LoginPage() {
           </div>
 
           {/* Submit Button */}
-          <button
-            type="submit"
-            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-3.5 rounded-xl font-medium transition-all duration-300 shadow-md shadow-blue-600/20 hover:shadow-blue-600/40 mt-4"
+          <button 
+            onClick={() => navigate('/dashboard')} 
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700"
           >
             Se connecter
           </button>

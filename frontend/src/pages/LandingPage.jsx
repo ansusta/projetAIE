@@ -1,10 +1,44 @@
 import React from 'react';
 import { Sparkles, Target, Zap, Shield, Users, Building2, Check, TrendingUp, ArrowRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { MapPin, Building, Euro, Clock, Briefcase } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 import Logo from '../components/Logo';
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  // Fausses données pour attirer l'utilisateur
+  const featuredJobs = [
+    {
+      id: 1,
+      title: "Développeur Fullstack React / Node.js",
+      company: "TechFlow",
+      location: "Paris",
+      isRemote: "Télétravail hybride",
+      contract: "CDI",
+      salary: "55k - 70k €",
+      color: "blue"
+    },
+    {
+      id: 2,
+      title: "Data Scientist Junior (IA Générative)",
+      company: "Aura Intelligence",
+      location: "Lyon",
+      isRemote: "100% Télétravail",
+      contract: "CDI",
+      salary: "45k - 55k €",
+      color: "indigo"
+    },
+    {
+      id: 3,
+      title: "Product Designer (UI/UX)",
+      company: "DesignStudio",
+      location: "Bordeaux",
+      isRemote: "Présentiel",
+      contract: "Freelance",
+      salary: "400€ - 600€ / jour",
+      color: "emerald"
+    }
+  ];
   return (
     // The soft background applied to the whole page, exactly like Figma
     <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900">
@@ -84,6 +118,87 @@ const LandingPage = () => {
           <div>
             <div className="text-4xl font-extrabold text-blue-600 mb-2">24h</div>
             <div className="text-sm font-medium text-slate-500">Temps moyen de réponse</div>
+          </div>
+        </div>
+      </section>
+
+{/* SECTION : OFFRES À LA UNE */}
+      <section className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          
+          {/* En-tête de la section */}
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-600 font-semibold text-sm mb-4">
+              <Sparkles className="w-4 h-4" />
+              Opportunités du jour
+            </div>
+            <h2 className="text-4xl font-black text-slate-900 mb-4">
+              Des offres qui matchent avec <span className="text-blue-600">votre talent</span>
+            </h2>
+            <p className="text-xl text-slate-500 max-w-2xl mx-auto">
+              Découvrez une sélection des meilleurs postes actuellement ouverts sur la plateforme.
+            </p>
+          </div>
+
+          {/* Grille des offres */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {featuredJobs.map((job) => (
+              <div 
+                key={job.id} 
+                className="bg-white border border-slate-100 p-8 rounded-3xl shadow-xl shadow-slate-200/40 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group flex flex-col"
+              >
+                {/* Logo & Entreprise */}
+                <div className="flex items-center gap-4 mb-6">
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center bg-${job.color}-50 text-${job.color}-600 group-hover:scale-110 transition-transform`}>
+                    <Building className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900">{job.company}</h4>
+                    <div className="flex items-center text-slate-500 text-sm mt-1">
+                      <MapPin className="w-4 h-4 mr-1" /> {job.location}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Titre du poste */}
+                <h3 className="text-xl font-bold text-slate-900 mb-4 line-clamp-2">
+                  {job.title}
+                </h3>
+
+                {/* Badges / Tags */}
+                <div className="flex flex-wrap gap-2 mb-8">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 text-slate-600 text-sm font-medium border border-slate-200">
+                    <Briefcase className="w-4 h-4 text-slate-400" /> {job.contract}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 text-slate-600 text-sm font-medium border border-slate-200">
+                    <Clock className="w-4 h-4 text-slate-400" /> {job.isRemote}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 text-green-700 text-sm font-medium border border-green-100">
+                    <Euro className="w-4 h-4 text-green-500" /> {job.salary}
+                  </span>
+                </div>
+
+{/* Bouton pour voir toutes les offres (Call to Action) */}
+          <div className="mt-16 text-center">
+            <Link 
+              to="/register" 
+              className="inline-flex items-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-full font-bold hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200 transition-all hover:-translate-y-1"
+            >
+              Explorer toutes les offres <ArrowRight className="w-5 h-5" />
+            </Link>
+            <p className="mt-4 text-sm text-slate-500">
+              Créez votre profil en 2 minutes pour voir toutes les opportunités.
+            </p>
+          </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Bouton pour voir toutes les offres */}
+          <div className="mt-16 text-center">
+            <button className="inline-flex items-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-full font-bold hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200 transition-all">
+              Explorer toutes les offres <ArrowRight className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </section>
