@@ -1,63 +1,69 @@
 import React from 'react';
-import { Sparkles, Target, Zap, Shield, Users, Building2, Check, TrendingUp, ArrowRight } from 'lucide-react';
-import { MapPin, Building, Euro, Clock, Briefcase } from 'lucide-react';
+import { Sparkles, Target, Zap, Shield, Users, Building2, Check, TrendingUp, ArrowRight, MapPin, Briefcase } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import Logo from '../components/Logo';
 
 const LandingPage = () => {
   const navigate = useNavigate();
-  // Fausses données pour attirer l'utilisateur
-  const featuredJobs = [
+  
+  // Données avec le nouveau format (logos générés et sans bouton)
+  const topPartners = [
     {
       id: 1,
-      title: "Développeur Fullstack React / Node.js",
-      company: "TechFlow",
-      location: "Paris",
-      isRemote: "Télétravail hybride",
-      contract: "CDI",
-      salary: "55k - 70k €",
-      color: "blue"
+      name: "TECHFLOW DIGITAL",
+      industry: "Développement Web",
+      location: "19000 - SÉTIF",
+      openPositions: 3,
+      logo: "https://api.dicebear.com/7.x/shapes/svg?seed=TechFlow&backgroundColor=e2e8f0"
     },
     {
       id: 2,
-      title: "Data Scientist Junior (IA Générative)",
-      company: "Aura Intelligence",
-      location: "Lyon",
-      isRemote: "100% Télétravail",
-      contract: "CDI",
-      salary: "45k - 55k €",
-      color: "indigo"
+      name: "AURA DATA INTELLIGENCE",
+      industry: "Intelligence Artificielle",
+      location: "16000 - ALGER",
+      openPositions: 1,
+      logo: "https://api.dicebear.com/7.x/shapes/svg?seed=AuraData&backgroundColor=e0e7ff"
     },
     {
       id: 3,
-      title: "Product Designer (UI/UX)",
-      company: "DesignStudio",
-      location: "Bordeaux",
-      isRemote: "Présentiel",
-      contract: "Freelance",
-      salary: "400€ - 600€ / jour",
-      color: "emerald"
+      name: "DESIGNSTUDIO",
+      industry: "Design & UX",
+      location: "31000 - ORAN",
+      openPositions: 2,
+      logo: "https://api.dicebear.com/7.x/shapes/svg?seed=DesignStudio&backgroundColor=d1fae5"
+    },
+    {
+      id: 4,
+      name: "SECURENET CYBERSECURITÉ",
+      industry: "Cybersécurité",
+      location: "19000 - SÉTIF",
+      openPositions: 1,
+      logo: "https://api.dicebear.com/7.x/shapes/svg?seed=SecureNet&backgroundColor=ffedd5"
+    },
+    {
+      id: 5,
+      name: "GREEN TECH SOLUTIONS DZ",
+      industry: "Énergie / Environnement",
+      location: "25000 - CONSTANTINE",
+      openPositions: 4,
+      logo: "https://api.dicebear.com/7.x/shapes/svg?seed=GreenTech&backgroundColor=dcfce7"
     }
   ];
+
   return (
-    // The soft background applied to the whole page, exactly like Figma
     <div className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900">
       
-{/* NAVBAR - Re-centered Layout */}
+      {/* NAVBAR */}
       <header className="grid grid-cols-3 items-center px-8 py-6 max-w-7xl mx-auto w-full">
-        
-        {/* Left: Logo */}
         <div className="flex justify-start">
           <Logo />
         </div>
 
-        {/* Center: Navigation Links */}
         <nav className="hidden md:flex justify-center gap-12 text-sm font-semibold text-slate-600">
           <a href="#" className="hover:text-blue-600 transition-colors">Fonctionnalités</a>
           <a href="#" className="hover:text-blue-600 transition-colors">À propos</a>
         </nav>
 
-        {/* Top Right Navigation Actions */}
         <div className="flex justify-end items-center gap-2 sm:gap-4">
           <button 
             onClick={() => navigate('/login')} 
@@ -74,25 +80,26 @@ const LandingPage = () => {
           </button>
         </div>        
       </header>
+
       {/* 1. HERO SECTION */}
       <section className="pt-20 pb-24 px-6 text-center max-w-5xl mx-auto">
-<div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-slate-200 text-sm font-medium text-slate-700 mb-8 shadow-sm">
-  <Sparkles className="w-4 h-4 text-blue-600" />
-  Propulsé par l'Intelligence Artificielle
-</div>
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-slate-200 text-sm font-medium text-slate-700 mb-8 shadow-sm">
+          <Sparkles className="w-4 h-4 text-blue-600" />
+          La plateforme de recrutement nouvelle génération
+        </div>
         
         <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6">
           Trouvez votre <span className="text-blue-600">match<br/>parfait</span>
         </h1>
         
         <p className="text-lg md:text-xl text-slate-500 mb-10 max-w-3xl mx-auto leading-relaxed">
-          La plateforme de recrutement intelligente qui connecte les meilleurs talents 
+          La plateforme de recrutement qui connecte les meilleurs talents 
           avec les entreprises qui leur correspondent vraiment.
         </p>
 
         <div className="flex flex-col items-center justify-center gap-4">
           <button onClick={() => navigate('/register')} className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-xl text-lg font-bold hover:from-blue-700 hover:to-indigo-700 hover:scale-105 transition-all shadow-xl shadow-indigo-200 flex items-center gap-2 cursor-pointer">
-            Commencer gratuitement <ArrowRight className="w-5 h-5" />
+            Commencer maintenant <ArrowRight className="w-5 h-5" />
           </button>
           <p className="text-sm text-slate-500">
             Aucune carte de crédit requise • Inscription en 2 minutes
@@ -113,7 +120,7 @@ const LandingPage = () => {
           </div>
           <div>
             <div className="text-4xl font-extrabold text-blue-600 mb-2">95%</div>
-            <div className="text-sm font-medium text-slate-500">Taux de matching</div>
+            <div className="text-sm font-medium text-slate-500">Taux de satisfaction</div>
           </div>
           <div>
             <div className="text-4xl font-extrabold text-blue-600 mb-2">24h</div>
@@ -122,92 +129,74 @@ const LandingPage = () => {
         </div>
       </section>
 
-{/* SECTION : OFFRES À LA UNE */}
-      <section className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* SECTION : ENTREPRISES PARTENAIRES (Design Exact France Travail) */}
+      <section id="entreprises" className="py-16 bg-white">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           
-          {/* En-tête de la section */}
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-blue-600 font-semibold text-sm mb-4">
-              <Sparkles className="w-4 h-4" />
-              Opportunités du jour
-            </div>
-            <h2 className="text-4xl font-black text-slate-900 mb-4">
-              Des offres qui matchent avec <span className="text-blue-600">votre talent</span>
+          <div className="text-center mb-10">
+            <h2 className="text-2xl md:text-3xl font-bold text-slate-900">
+              Les employeurs à la une
             </h2>
-            <p className="text-xl text-slate-500 max-w-2xl mx-auto">
-              Découvrez une sélection des meilleurs postes actuellement ouverts sur la plateforme.
-            </p>
           </div>
 
-          {/* Grille des offres */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {featuredJobs.map((job) => (
+          {/* Grille sur 5 colonnes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {topPartners.map((partner) => (
               <div 
-                key={job.id} 
-                className="bg-white border border-slate-100 p-8 rounded-3xl shadow-xl shadow-slate-200/40 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group flex flex-col"
+                key={partner.id} 
+                onClick={() => navigate('/register')}
+                className="bg-white border border-slate-200 rounded-[1.5rem] p-5 flex flex-col hover:shadow-md hover:border-slate-300 transition-all duration-200 cursor-pointer"
               >
-                {/* Logo & Entreprise */}
-                <div className="flex items-center gap-4 mb-6">
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center bg-${job.color}-50 text-${job.color}-600 group-hover:scale-110 transition-transform`}>
-                    <Building className="w-7 h-7" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-900">{job.company}</h4>
-                    <div className="flex items-center text-slate-500 text-sm mt-1">
-                      <MapPin className="w-4 h-4 mr-1" /> {job.location}
-                    </div>
-                  </div>
+                {/* Espace Logo Agrandit */}
+                <div className="h-16 mb-4 flex items-center justify-start">
+                   <img 
+                      src={partner.logo} 
+                      alt={`Logo ${partner.name}`} 
+                      className="h-16 w-16 rounded-xl object-cover border border-slate-100 shadow-sm"
+                   />
                 </div>
 
-                {/* Titre du poste */}
-                <h3 className="text-xl font-bold text-slate-900 mb-4 line-clamp-2">
-                  {job.title}
+                {/* Nom de l'entreprise en MAJUSCULES */}
+                <h3 className="text-[18px] font-bold text-slate-900 uppercase leading-snug mb-6 line-clamp-3">
+                  {partner.name}
                 </h3>
 
-                {/* Badges / Tags */}
-                <div className="flex flex-wrap gap-2 mb-8">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 text-slate-600 text-sm font-medium border border-slate-200">
-                    <Briefcase className="w-4 h-4 text-slate-400" /> {job.contract}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 text-slate-600 text-sm font-medium border border-slate-200">
-                    <Clock className="w-4 h-4 text-slate-400" /> {job.isRemote}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 text-green-700 text-sm font-medium border border-green-100">
-                    <Euro className="w-4 h-4 text-green-500" /> {job.salary}
-                  </span>
-                </div>
+                {/* Conteneur inférieur aligné vers le bas */}
+                <div className="mt-auto flex flex-col gap-3">
+                  
+                  {/* Badge Secteur */}
+                  <div>
+                    <span className="inline-block px-2.5 py-1 bg-slate-100 text-slate-600 text-[11px] font-medium rounded-md">
+                      {partner.industry}
+                    </span>
+                  </div>
 
-{/* Bouton pour voir toutes les offres (Call to Action) */}
-          <div className="mt-16 text-center">
-            <Link 
-              to="/register" 
-              className="inline-flex items-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-full font-bold hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200 transition-all hover:-translate-y-1"
-            >
-              Explorer toutes les offres <ArrowRight className="w-5 h-5" />
-            </Link>
-            <p className="mt-4 text-sm text-slate-500">
-              Créez votre profil en 2 minutes pour voir toutes les opportunités.
-            </p>
-          </div>
+                  <div className="space-y-1.5 mt-1">
+                    {/* Localisation */}
+                    <div className="flex items-start gap-1.5 text-slate-600 text-[13px]">
+                      <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                      <span className="leading-tight">{partner.location}</span>
+                    </div>
+
+                    {/* Nombre d'offres */}
+                    <div className="flex items-center gap-1.5 text-slate-600 text-[13px]">
+                      <Briefcase className="w-4 h-4 flex-shrink-0" />
+                      <span>{partner.openPositions} offre{partner.openPositions > 1 ? 's' : ''}</span>
+                    </div>
+                  </div>
+
+                </div>
               </div>
             ))}
-          </div>
-
-          {/* Bouton pour voir toutes les offres */}
-          <div className="mt-16 text-center">
-            <button className="inline-flex items-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-full font-bold hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200 transition-all">
-              Explorer toutes les offres <ArrowRight className="w-5 h-5" />
-            </button>
           </div>
         </div>
       </section>
 
-      {/* 3. FEATURES GRID ("Pourquoi choisir MatchTalent ?") */}
-      <section className="py-24 px-6 max-w-7xl mx-auto">
+      {/* 3. FEATURES GRID */}
+      <section className="py-24 px-6 max-w-7xl mx-auto bg-[#F8FAFC] border-y border-slate-200/60 rounded-3xl mt-12">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-extrabold mb-4">Pourquoi choisir MatchTalent ?</h2>
-          <p className="text-slate-500 text-lg">Des fonctionnalités innovantes pour un recrutement moderne</p>
+          <p className="text-slate-500 text-lg">Des fonctionnalités pensées pour un recrutement efficace</p>
         </div>
         
         <div className="grid md:grid-cols-4 gap-6">
@@ -215,16 +204,16 @@ const LandingPage = () => {
             <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6">
               <Sparkles className="w-6 h-6" />
             </div>
-            <h3 className="text-xl font-bold mb-3">IA Intelligente</h3>
-            <p className="text-slate-500 leading-relaxed">Notre intelligence artificielle analyse les profils et crée des matchs parfaits</p>
+            <h3 className="text-xl font-bold mb-3">Recherche Optimisée</h3>
+            <p className="text-slate-500 leading-relaxed">Notre système analyse les profils pour suggérer les meilleures correspondances.</p>
           </div>
           
           <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
             <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-6">
               <Target className="w-6 h-6" />
             </div>
-            <h3 className="text-xl font-bold mb-3">Matching Géolocalisé</h3>
-            <p className="text-slate-500 leading-relaxed">Trouvez des opportunités près de chez vous grâce à notre système de géolocalisation</p>
+            <h3 className="text-xl font-bold mb-3">Filtres Géolocalisés</h3>
+            <p className="text-slate-500 leading-relaxed">Trouvez des opportunités près de chez vous ou en télétravail grâce à nos outils.</p>
           </div>
 
           <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
@@ -232,7 +221,7 @@ const LandingPage = () => {
               <Zap className="w-6 h-6" />
             </div>
             <h3 className="text-xl font-bold mb-3">Processus Rapide</h3>
-            <p className="text-slate-500 leading-relaxed">Inscription en 4 étapes simples et rapides pour commencer immédiatement</p>
+            <p className="text-slate-500 leading-relaxed">Inscription en 4 étapes simples et rapides pour commencer immédiatement.</p>
           </div>
 
           <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
@@ -240,12 +229,12 @@ const LandingPage = () => {
               <Shield className="w-6 h-6" />
             </div>
             <h3 className="text-xl font-bold mb-3">100% Sécurisé</h3>
-            <p className="text-slate-500 leading-relaxed">Vos données sont protégées et vérifiées par notre système de validation IA</p>
+            <p className="text-slate-500 leading-relaxed">Vos données sont protégées et vérifiées rigoureusement par nos équipes.</p>
           </div>
         </div>
       </section>
 
-      {/* 4. ROLES ("Une solution pour chacun") */}
+      {/* 4. ROLES */}
       <section className="py-24 px-6 max-w-6xl mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-extrabold mb-4">Une solution pour chacun</h2>
@@ -253,7 +242,6 @@ const LandingPage = () => {
         </div>
         
         <div className="grid md:grid-cols-2 gap-8">
-          {/* Candidats */}
           <div className="bg-white p-10 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col">
             <div className="flex items-center gap-4 mb-8">
               <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
@@ -262,7 +250,7 @@ const LandingPage = () => {
               <h3 className="text-2xl font-bold">Pour les candidats</h3>
             </div>
             <ul className="space-y-4 mb-10 flex-grow">
-              <li className="flex items-center gap-3 text-slate-600"><Check className="w-5 h-5 text-blue-600 flex-shrink-0" /> Profil optimisé par IA à partir de votre CV</li>
+              <li className="flex items-center gap-3 text-slate-600"><Check className="w-5 h-5 text-blue-600 flex-shrink-0" /> Mise en valeur intuitive de votre profil et CV</li>
               <li className="flex items-center gap-3 text-slate-600"><Check className="w-5 h-5 text-blue-600 flex-shrink-0" /> Recommandations personnalisées d'emplois</li>
               <li className="flex items-center gap-3 text-slate-600"><Check className="w-5 h-5 text-blue-600 flex-shrink-0" /> Alertes en temps réel pour les nouvelles opportunités</li>
               <li className="flex items-center gap-3 text-slate-600"><Check className="w-5 h-5 text-blue-600 flex-shrink-0" /> Suivi de vos candidatures en un coup d'œil</li>
@@ -272,7 +260,6 @@ const LandingPage = () => {
             </button>
           </div>
 
-          {/* Recruteurs */}
           <div className="bg-white p-10 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col">
             <div className="flex items-center gap-4 mb-8">
               <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
@@ -281,9 +268,9 @@ const LandingPage = () => {
               <h3 className="text-2xl font-bold">Pour les recruteurs</h3>
             </div>
             <ul className="space-y-4 mb-10 flex-grow">
-              <li className="flex items-center gap-3 text-slate-600"><Check className="w-5 h-5 text-indigo-600 flex-shrink-0" /> Validation automatique des entreprises</li>
-              <li className="flex items-center gap-3 text-slate-600"><Check className="w-5 h-5 text-indigo-600 flex-shrink-0" /> Accès à une base de talents qualifiés</li>
-              <li className="flex items-center gap-3 text-slate-600"><Check className="w-5 h-5 text-indigo-600 flex-shrink-0" /> Matching intelligent basé sur vos critères</li>
+              <li className="flex items-center gap-3 text-slate-600"><Check className="w-5 h-5 text-indigo-600 flex-shrink-0" /> Espace entreprise dédié et vérifié</li>
+              <li className="flex items-center gap-3 text-slate-600"><Check className="w-5 h-5 text-indigo-600 flex-shrink-0" /> Accès à une CVthèque de talents qualifiés</li>
+              <li className="flex items-center gap-3 text-slate-600"><Check className="w-5 h-5 text-indigo-600 flex-shrink-0" /> Mise en relation ciblée selon vos critères</li>
               <li className="flex items-center gap-3 text-slate-600"><Check className="w-5 h-5 text-indigo-600 flex-shrink-0" /> Gestion simplifiée de vos offres d'emploi</li>
             </ul>
             <button onClick={() => navigate('/register', { state: { role: 'recruiter' } })} className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition-colors cursor-pointer">
@@ -293,7 +280,7 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* 5. HOW IT WORKS - Unified Brand Gradients */}
+      {/* 5. HOW IT WORKS */}
       <section className="py-24 px-6 max-w-5xl mx-auto">
         <div className="text-center mb-20">
           <h2 className="text-3xl md:text-4xl font-extrabold mb-4 text-slate-900">Comment ça marche ?</h2>
@@ -301,7 +288,6 @@ const LandingPage = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 text-center">
-          {/* Step 1 */}
           <div className="flex flex-col items-center">
             <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full flex items-center justify-center text-2xl font-bold mb-6 shadow-lg shadow-blue-200">
               1
@@ -310,7 +296,6 @@ const LandingPage = () => {
             <p className="text-slate-500 text-sm">Candidat ou Recruteur</p>
           </div>
 
-          {/* Step 2 */}
           <div className="flex flex-col items-center">
             <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full flex items-center justify-center text-2xl font-bold mb-6 shadow-lg shadow-blue-200">
               2
@@ -319,16 +304,14 @@ const LandingPage = () => {
             <p className="text-slate-500 text-sm">En quelques clics</p>
           </div>
 
-          {/* Step 3 */}
           <div className="flex flex-col items-center">
             <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full flex items-center justify-center text-2xl font-bold mb-6 shadow-lg shadow-blue-200">
               3
             </div>
-            <h3 className="text-lg font-bold mb-2 text-slate-800">L'IA fait le travail</h3>
-            <p className="text-slate-500 text-sm">Analyse et matching intelligent</p>
+            <h3 className="text-lg font-bold mb-2 text-slate-800">Nous analysons</h3>
+            <p className="text-slate-500 text-sm">Des recommandations précises</p>
           </div>
 
-          {/* Step 4 */}
           <div className="flex flex-col items-center">
             <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full flex items-center justify-center text-2xl font-bold mb-6 shadow-lg shadow-blue-200">
               4
@@ -355,21 +338,19 @@ const LandingPage = () => {
         </div>
       </section>
 
-{/* 8. ENHANCED MULTI-COLUMN FOOTER */}
-      <footer className="bg-[#0B1120] pt-20 pb-10 px-6">
+      {/* 7. FOOTER */}
+      <footer className="bg-[#0B1120] pt-20 pb-10 px-6 border-t border-slate-800/60 rounded-t-3xl">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
             
-            {/* Brand Column */}
             <div className="col-span-1 md:col-span-1">
               <div className="text-2xl font-bold text-white tracking-tight mb-4">
                 Match<span className="text-blue-500">Talent</span>
               </div>
               <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                L'intelligence artificielle au service de votre carrière et de vos recrutements. 
+                La technologie au service de votre carrière et de vos recrutements. 
                 Trouvez l'opportunité qui vous correspond vraiment.
               </p>
-              {/* Social Icons Placeholder */}
               <div className="flex gap-4">
                 <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-blue-600 hover:text-white transition-all cursor-pointer">
                   <span className="text-xs font-bold">In</span>
@@ -380,7 +361,6 @@ const LandingPage = () => {
               </div>
             </div>
 
-            {/* Links Column 1 */}
             <div>
               <h4 className="text-white font-bold mb-6">Plateforme</h4>
               <ul className="space-y-4 text-sm text-slate-400">
@@ -391,7 +371,6 @@ const LandingPage = () => {
               </ul>
             </div>
 
-            {/* Links Column 2 */}
             <div>
               <h4 className="text-white font-bold mb-6">Entreprise</h4>
               <ul className="space-y-4 text-sm text-slate-400">
@@ -402,7 +381,6 @@ const LandingPage = () => {
               </ul>
             </div>
 
-            {/* Newsletter/Legal Column */}
             <div>
               <h4 className="text-white font-bold mb-6">Légal</h4>
               <ul className="space-y-4 text-sm text-slate-400">
@@ -414,14 +392,13 @@ const LandingPage = () => {
             </div>
           </div>
 
-          {/* Bottom Bar */}
           <div className="pt-8 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-slate-500 text-xs">
               © 2026 MatchTalent. Fait avec passion pour le futur du travail.
             </p>
             <div className="flex items-center gap-2">
                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-               <span className="text-slate-500 text-xs font-medium">Système IA Opérationnel</span>
+               <span className="text-slate-500 text-xs font-medium">Plateforme Opérationnelle</span>
             </div>
           </div>
         </div>
