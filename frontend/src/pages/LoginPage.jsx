@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import Logo from '../components/Logo';
-import { authService } from '../services/auth.service'; // <-- Import the service
+import { authService } from '../services/auth.service';
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState(''); // <-- Add state for error messages
-  const [isLoading, setIsLoading] = useState(false); // <-- Add loading state
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -28,8 +28,22 @@ export default function LoginPage() {
       const data = await authService.login(formData);
       console.log("Login successful!", data);
       
-      // Redirect to dashboard on success
-      navigate('/dashboard');
+      // Extract the user role from the backend response
+      // Adapt "data.user.role" if your backend structures the response differently
+      const userRole = data.user?.role || data.role; 
+
+      // Store the role locally so we can protect routes later
+      if (userRole) {
+        localStorage.setItem('userRole', userRole);
+      }
+      
+      // REDIRECT BASED ON ROLE
+      if (userRole === 'recruiter' || userRole === 'recruteur') {
+        navigate('/recruiter-dashboard');
+      } else {
+        navigate('/dashboard');
+      }
+
     } catch (err) {
       // Handle errors (e.g., wrong password, user not found)
       setError(err.response?.data?.message || 'Une erreur est survenue lors de la connexion.');
@@ -54,7 +68,7 @@ export default function LoginPage() {
 
         {/* Display Error Message if it exists */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg text-center">
+          <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg text-center font-medium">
             {error}
           </div>
         )}
