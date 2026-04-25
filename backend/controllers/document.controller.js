@@ -1,181 +1,193 @@
-const mongoose = require("mongoose");
-const { Readable } = require("stream");
-const Document = require("../models/Document");
-const getGridFSBucket = require("../config/gridfs");
-const Utilisateur = require('../models/Utilisateur');
+const mongoose   = require('mongoose')
+const { Readable } = require('stream')
+const Document   = require('../models/Document')
+const getGridFSBucket = require('../config/gridfs')
+const Utilisateur     = require('../models/Utilisateur')
+const { verifyDocument } = require('../services/verification.service')
 
-// Use the more stable version of the library
-const pdfParse = require('pdf-extraction');
-const mammoth = require('mammoth');
+const pdfParse = require('pdf-extraction')
+const mammoth  = require('mammoth')
 
-
+// ── Upload ────────────────────────────────────────────────────────────────────
 const uploadFile = async (req, res) => {
-  console.log("--- 🚀 Multi-Format Upload Started ---");
+  console.log('--- 🚀 Upload Started ---')
   try {
-    if (!req.file) {
-      console.error("❌ No file received");
-      return res.status(400).json({ error: "No file received" });
-    }
+    if (!req.file)
+      return res.status(400).json({ error: 'No file received' })
 
-    const mimeType = req.file.mimetype;
-    const normalizedType = req.body.type ? req.body.type.toLowerCase() : null;
-    let resumeText = null;
+    const mimeType       = req.file.mimetype
+    const normalizedType = req.body.type ? req.body.type.toLowerCase() : null
+    let   resumeText     = null
 
-    console.log(`📁 Processing: ${req.file.originalname} | Mime: ${mimeType}`);
-
-    // ─── EXTRACTION STRATEGY ──────────────────────────────────────────
+    // ── CV text extraction ───────────────────────────────────────────────────
     if (normalizedType === 'cv') {
       try {
-        if (mimeType === "application/pdf") {
-          console.log("📑 Strategy: PDF Extraction");
-          const data = await pdfParse(req.file.buffer);
-          resumeText = data.text;
-        } 
-        
-        else if (
-          mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || 
-          mimeType === "application/msword"
+        if (mimeType === 'application/pdf') {
+          const data = await pdfParse(req.file.buffer)
+          resumeText = data.text
+        } else if (
+          mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+          mimeType === 'application/msword'
         ) {
-          console.log("📝 Strategy: Word (.docx) Extraction");
-          // Mammoth extracts raw text from the buffer
-          const result = await mammoth.extractRawText({ buffer: req.file.buffer });
-          resumeText = result.value; 
-        } 
-        
-        else if (mimeType === "text/plain") {
-          console.log("📄 Strategy: Plain Text Extraction");
-          resumeText = req.file.buffer.toString('utf-8');
-        } 
-        
-        else if (mimeType.startsWith("image/")) {
-          console.log("🖼️ Strategy: Image detected. (Note: OCR required for text, skipping for now)");
-          // If you ever add Tesseract.js, it goes here
-        }
-
-        if (resumeText) {
-          console.log(`✅ Extraction Success! (${resumeText.length} characters)`);
+          const result = await mammoth.extractRawText({ buffer: req.file.buffer })
+          resumeText   = result.value
+        } else if (mimeType === 'text/plain') {
+          resumeText = req.file.buffer.toString('utf-8')
         }
       } catch (extractError) {
-        console.error("⚠️ Extraction failed but continuing upload:", extractError.message);
+        console.error('⚠️ Text extraction failed (continuing):', extractError.message)
       }
     }
-    // ──────────────────────────────────────────────────────────────────
 
-    // GridFS Upload Logic
-    let bucket = getGridFSBucket();
-    const uploadStream = bucket.openUploadStream(`${Date.now()}-${req.file.originalname}`, {
-      contentType: mimeType,
-      metadata: {
-        idCandidat: req.body.idCandidat || null,
-        type: normalizedType,
-        typeFichier: req.body.typeFichier || null,
+    // ── GridFS upload ────────────────────────────────────────────────────────
+    const bucket       = getGridFSBucket()
+    const uploadStream = bucket.openUploadStream(
+      `${Date.now()}-${req.file.originalname}`,
+      {
+        contentType: mimeType,
+        metadata: {
+          idCandidat:  req.body.idCandidat  || null,
+          idRecruteur: req.body.idRecruteur || null,
+          type:        normalizedType,
+          typeFichier: req.body.typeFichier || null,
+        },
       }
-    });
+    )
 
-    Readable.from(req.file.buffer).pipe(uploadStream);
+    Readable.from(req.file.buffer).pipe(uploadStream)
 
-    uploadStream.on("finish", async () => {
+    uploadStream.on('finish', async () => {
       try {
         const doc = await Document.create({
-          fileId: uploadStream.id,
-          nomFichier: req.file.originalname,
+          fileId:       uploadStream.id,
+          nomFichier:   req.file.originalname,
           formatFichier: mimeType,
-          taille: req.file.size,
-          type: normalizedType,
-          idCandidat: req.body.idCandidat || null,
-          typeFichier: req.body.typeFichier || null,
-          idRecruteur: req.body.idRecruteur || null,
+          taille:       req.file.size,
+          type:         normalizedType,
+          idCandidat:   req.body.idCandidat  || null,
+          idRecruteur:  req.body.idRecruteur || null,
           typeDocument: req.body.typeDocument || null,
-          resume: resumeText,
-          derniereMisAjour: normalizedType === 'cv' ? new Date() : undefined
-        });
+          typeFichier:  req.body.typeFichier  || null,
+          resume:       resumeText,
+          derniereMisAjour: normalizedType === 'cv' ? new Date() : undefined,
+        })
 
+        // Link CV to user
         if (normalizedType === 'cv' && req.body.idCandidat) {
-          await Utilisateur.findByIdAndUpdate(req.body.idCandidat, { idCv: doc._id });
+          await Utilisateur.findByIdAndUpdate(req.body.idCandidat, { idCv: doc._id })
         }
 
-        res.status(201).json(doc);
+        // ── Trigger AI verification asynchronously for recruiter docs ────────
+        // We respond to the client immediately and run verification in the background.
+        if (normalizedType === 'docrecruteur') {
+          console.log(`[Upload] Scheduling AI verification for doc ${doc._id}`)
+          verifyDocument(doc._id.toString()).catch(err =>
+            console.error('[Upload] Background verification error:', err.message)
+          )
+        }
+
+        res.status(201).json(doc)
       } catch (saveErr) {
-        await bucket.delete(uploadStream.id);
-        res.status(400).json({ error: saveErr.message });
+        await bucket.delete(uploadStream.id).catch(() => {})
+        res.status(400).json({ error: saveErr.message })
       }
-    });
+    })
 
-    uploadStream.on("error", (err) => res.status(500).json({ error: err.message }));
-
+    uploadStream.on('error', err => res.status(500).json({ error: err.message }))
   } catch (err) {
-    console.error("❌ Global Error:", err.stack);
-    res.status(500).json({ error: err.message });
+    console.error('❌ Upload error:', err.stack)
+    res.status(500).json({ error: err.message })
   }
-};
+}
 
-// Keep your downloadFile, deleteFile, etc. below...
-const downloadFile = async (req, res) => {   try {
-
+// ── Download ──────────────────────────────────────────────────────────────────
+const downloadFile = async (req, res) => {
+  try {
     const bucket = getGridFSBucket()
-
     const fileId = new mongoose.Types.ObjectId(req.params.fileId)
 
-
-
     const files = await bucket.find({ _id: fileId }).toArray()
-
     if (!files || files.length === 0)
+      return res.status(404).json({ error: 'File not found' })
 
-      return res.status(404).json({ error: "File not found" })
-
-
-
-    res.set('Content-Type', files[0].contentType)
-
+    res.set('Content-Type',        files[0].contentType)
     res.set('Content-Disposition', `inline; filename="${files[0].filename}"`)
 
-
-
     const stream = bucket.openDownloadStream(fileId)
-
-    stream.on("error", () => res.status(404).json({ error: "Stream error" }))
-
+    stream.on('error', () => res.status(404).json({ error: 'Stream error' }))
     stream.pipe(res)
-
   } catch (err) {
-
     res.status(500).json({ error: err.message })
+  }
+}
 
-  } };
-const deleteFile = async (req, res) => {  try {
-
+// ── Delete ────────────────────────────────────────────────────────────────────
+const deleteFile = async (req, res) => {
+  try {
     const doc = await Document.findById(req.params.id)
-
-    if (!doc) return res.status(404).json({ error: "Document not found" })
-
-
+    if (!doc) return res.status(404).json({ error: 'Document not found' })
 
     const bucket = getGridFSBucket()
-
     await bucket.delete(doc.fileId)
-
     await Document.findByIdAndDelete(req.params.id)
 
-
-
-    res.json({ message: "Document deleted successfully" })
-
+    res.json({ message: 'Document deleted successfully' })
   } catch (err) {
-
     res.status(500).json({ error: err.message })
+  }
+}
 
-  } };
-const getDocsByCandidat = async (req, res) => { try {
-
+// ── Get docs by candidate ─────────────────────────────────────────────────────
+const getDocsByCandidat = async (req, res) => {
+  try {
     const docs = await Document.find({ idCandidat: req.params.idCandidat })
-
     res.json(docs)
-
   } catch (err) {
-
     res.status(500).json({ error: err.message })
+  }
+}
 
-  }};
+// ── Get docs by recruiter (with AI verification results) ──────────────────────
+const getDocsByRecruteur = async (req, res) => {
+  try {
+    const docs = await Document.find({
+      idRecruteur:  req.params.idRecruteur,
+      type:         'docrecruteur',
+    }).sort({ dateUpload: -1 })
+    res.json(docs)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
 
-module.exports = { uploadFile, downloadFile, deleteFile, getDocsByCandidat };
+// ── Manual re-trigger AI verification (admin only) ────────────────────────────
+// POST /api/documents/:id/verify
+const triggerVerification = async (req, res) => {
+  try {
+    const doc = await Document.findById(req.params.id)
+    if (!doc)
+      return res.status(404).json({ error: 'Document not found' })
+    if (doc.type !== 'docrecruteur')
+      return res.status(400).json({ error: 'Only recruiter documents can be verified' })
+    if (doc.verificationEnCours)
+      return res.status(409).json({ error: 'Verification already in progress' })
+
+    // Run async — client gets immediate acknowledgement
+    verifyDocument(doc._id.toString()).catch(err =>
+      console.error('[ManualVerify] Error:', err.message)
+    )
+
+    res.json({ message: 'Verification started. Check back in a few seconds.' })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
+
+module.exports = {
+  uploadFile,
+  downloadFile,
+  deleteFile,
+  getDocsByCandidat,
+  getDocsByRecruteur,
+  triggerVerification,
+}
