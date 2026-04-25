@@ -9,6 +9,7 @@ import EditProfilePage        from './pages/EditProfilePage';
 import EditCVPage             from './pages/EditCVPage';
 import NotificationsPage      from './pages/NotificationsPage';
 import RecruteurProfilePage   from './pages/RecruteurProfilePage';
+import RecruiterDashboard from './pages/RecruiterDashboard';
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
         <Route path="/edit-cv"        element={<EditCVPage />} />
         <Route path="/notifications"  element={<NotificationsPage />} />
         <Route path="/recruteur/:id"  element={<RecruteurProfilePage />} />
+        <Route path="/recruiter-dashboard" element={<RecruiterDashboard />} />
       </Routes>
     </BrowserRouter>
   );

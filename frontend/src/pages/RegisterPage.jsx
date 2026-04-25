@@ -33,11 +33,17 @@ export default function RegisterPage() {
     setError('');
     try {
       if (role === 'candidate') {
-        await authService.registerCandidate(formData);
+        const response = await authService.registerCandidate(formData);
+        // Save role for persistent session (adjust depending on your backend response)
+        localStorage.setItem('userRole', 'candidate'); 
         navigate('/onboarding');
       } else {
-        await authService.registerRecruiter(formData);
-        navigate('/dashboard');
+        const response = await authService.registerRecruiter(formData);
+        // Save role for persistent session
+        localStorage.setItem('userRole', 'recruiter'); 
+        
+        // FIXED: Navigate to the correct recruiter dashboard!
+        navigate('/recruiter-dashboard'); 
       }
     } catch (err) {
       setError(err.response?.data?.error || err.response?.data?.message || "Une erreur est survenue lors de l'inscription.");
@@ -45,7 +51,7 @@ export default function RegisterPage() {
       setIsLoading(false);
     }
   };
-
+  
   // ── Step 0: Role selection ────────────────────────────────────────────────
   const renderRoleSelection = () => (
     <div className="flex flex-col items-center animate-fade-in w-full max-w-4xl">
