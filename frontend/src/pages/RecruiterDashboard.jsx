@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; 
 import { useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Briefcase, Users, Settings, LogOut, 
@@ -6,19 +6,19 @@ import {
   User, Building, Lock, Camera
 } from 'lucide-react';
 import CreateJobModal from '../components/CreateJobModal';
-import CandidateProfileModal from '../components/CandidateProfileModal'; // <-- AJOUT 
+import CandidateProfileModal from '../components/CandidateProfileModal'; 
 
 export default function RecruiterDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
-const [isCandidateModalOpen, setIsCandidateModalOpen] = useState(false);
+  const [isCandidateModalOpen, setIsCandidateModalOpen] = useState(false);
 
-const openCandidateProfile = (candidate) => {
-  setSelectedCandidate(candidate);
-  setIsCandidateModalOpen(true);
-};
+  const openCandidateProfile = (candidate) => {
+    setSelectedCandidate(candidate);
+    setIsCandidateModalOpen(true);
+  };
 
   // --- Données de test (Mock data) ---
   const stats = [
@@ -48,6 +48,64 @@ const openCandidateProfile = (candidate) => {
     navigate('/login');
   };
 
+ // Nouvel état pour les notifications
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+  // 1. L'état commence vide
+  const [notifications, setNotifications] = useState([]);
+
+  // 2. Récupération des données au chargement du composant
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        // Remplacez cette URL par la vraie route de votre backend
+        const response = await fetch('http://localhost:5000/api/notifications', {
+          method: 'GET',
+          headers: {
+            // On récupère le token que vous avez stocké lors du login
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setNotifications(data); // On injecte les vraies données dans l'état !
+        }
+      } catch (error) {
+        console.error("Erreur lors de la récupération des notifications:", error);
+      }
+    };
+
+    fetchNotifications();
+  }, []); // Le tableau vide [] signifie : exécuter une seule fois au lancement
+
+  // 2. Fonction pour tout marquer comme lu
+  const handleMarkAllAsRead = async () => {
+    try {
+      // 1. On prévient le backend de mettre à jour la base de données
+      const response = await fetch('http://localhost:5000/api/notifications/mark-read', {
+        method: 'PUT', // ou PATCH, selon ce que vous avez configuré côté Node.js/Backend
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        // 2. Si le backend dit "OK", on met à jour le visuel
+        setNotifications(notifications.map(notif => ({ ...notif, unread: false })));
+      }
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour des notifications:", error);
+    }
+  };
+
+  // 3. Fonction pour voir toutes les notifications
+  const handleViewAllNotifications = () => {
+    setIsNotificationsOpen(false); // On ferme le menu déroulant
+    setActiveTab('notifications'); // On bascule sur la nouvelle vue !
+  };
   // --- Vues (Tabs) ---
 
   const renderOverview = () => (
@@ -125,7 +183,6 @@ const openCandidateProfile = (candidate) => {
         </div>
 
         {/* Recent Candidates (Aperçu) */}
-        {/* Recent Candidates (Aperçu) */}
         <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/40 border border-slate-100 overflow-hidden flex flex-col">
           <div className="p-6 border-b border-slate-100 flex justify-between items-center">
             <h3 className="text-lg font-bold text-slate-800">Candidatures récentes</h3>
@@ -134,7 +191,7 @@ const openCandidateProfile = (candidate) => {
             {candidates.slice(0, 4).map((candidate) => (
               <div 
                 key={candidate.id} 
-                onClick={() => openCandidateProfile(candidate)} // <-- AJOUTÉ ICI AUSSI !
+                onClick={() => openCandidateProfile(candidate)}
                 className="flex items-center p-4 hover:bg-slate-50 rounded-2xl transition-colors cursor-pointer group"
               >
                 <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold mr-4 group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
@@ -224,7 +281,7 @@ const openCandidateProfile = (candidate) => {
   );
 
   const renderCandidates = () => (
-    <div className="animate-fade-in space-y-6"> {/* <-- Remis le wrapper normal ici */}
+    <div className="animate-fade-in space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Base de candidats</h2>
@@ -236,7 +293,7 @@ const openCandidateProfile = (candidate) => {
         {candidates.map((candidate) => (
           <div 
             key={candidate.id} 
-            onClick={() => openCandidateProfile(candidate)} // <-- DÉPLACÉ ICI !
+            onClick={() => openCandidateProfile(candidate)}
             className="bg-white p-6 rounded-3xl shadow-xl shadow-slate-200/40 border border-slate-100 hover:border-indigo-100 hover:-translate-y-1 transition-all cursor-pointer group"
           >
             <div className="flex items-start justify-between mb-4">
@@ -367,6 +424,60 @@ const openCandidateProfile = (candidate) => {
     </div>
   );
 
+  const renderNotifications = () => (
+    <div className="animate-fade-in space-y-6 max-w-4xl mx-auto pb-10">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800">Historique des notifications</h2>
+          <p className="text-slate-500 text-sm mt-1">Retrouvez toutes vos alertes et activités récentes.</p>
+        </div>
+        
+        {/* Bouton pour tout marquer comme lu depuis la page */}
+        {/* Nouveau bouton bien plus visible */}
+        <button 
+          onClick={handleMarkAllAsRead}
+          className="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-5 py-2.5 rounded-xl font-bold transition-all">
+          Tout marquer comme lu
+        </button>
+      </div>
+
+      <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/40 border border-slate-100 overflow-hidden">
+        {notifications.length === 0 ? (
+          <div className="p-12 text-center text-slate-500 font-medium">
+            Vous n'avez aucune notification pour le moment.
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {notifications.map((notif) => (
+              <div 
+                key={notif.id} 
+                className={`p-6 flex items-start gap-4 transition-colors hover:bg-slate-50 ${notif.unread ? 'bg-indigo-50/30' : ''}`}
+              >
+                {/* Icône de la notification */}
+                <div className={`mt-1 w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${notif.unread ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-400'}`}>
+                  <Bell className="w-5 h-5" />
+                </div>
+                
+                {/* Contenu */}
+                <div className="flex-1">
+                  <p className={`text-base ${notif.unread ? 'text-slate-800 font-bold' : 'text-slate-700 font-medium'}`}>
+                    {notif.text}
+                  </p>
+                  <p className="text-sm text-slate-500 mt-1">{notif.time}</p>
+                </div>
+
+                {/* Point indicateur non-lu */}
+                {notif.unread && (
+                  <div className="shrink-0 w-3 h-3 bg-indigo-600 rounded-full mt-2 shadow-sm"></div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex h-screen bg-slate-50 font-sans">
       
@@ -409,13 +520,13 @@ const openCandidateProfile = (candidate) => {
 
         <div className="p-4 border-t border-slate-200 space-y-2">
           <button 
-  onClick={() => setActiveTab('settings')}
-  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
-    activeTab === 'settings' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'
-  }`}
->
-  <Settings className="w-5 h-5" /> Paramètres
-</button>
+            onClick={() => setActiveTab('settings')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+              activeTab === 'settings' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <Settings className="w-5 h-5" /> Paramètres
+          </button>
           <button 
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-red-600 hover:bg-red-50 transition-colors"
@@ -434,20 +545,79 @@ const openCandidateProfile = (candidate) => {
               {activeTab === 'overview' ? 'Bonjour, Recruteur 👋' : 
                activeTab === 'jobs' ? 'Gestion des annonces' : 
                activeTab === 'candidates' ? 'Suivi des candidatures' :
+               activeTab === 'notifications' ? 'Vos notifications' :
                'Paramètres'}
             </h2>
           </div>
           
+          {/* Zone Notifications & Profil MODIFIÉE ICI */}
           <div className="flex items-center gap-6">
-            <button className="relative p-2 text-slate-400 hover:text-indigo-600 transition-colors rounded-full hover:bg-slate-50">
-              <Bell className="w-6 h-6" />
-              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
-            </button>
-            <div className="flex items-center gap-3 border-l border-slate-200 pl-6 cursor-pointer">
+            
+            {/* Conteneur relatif pour le menu déroulant */}
+            <div className="relative">
+              <button 
+                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                className={`relative p-2 transition-colors rounded-full ${isNotificationsOpen ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-50'}`}
+              >
+                <Bell className="w-6 h-6" />
+                {/* Point rouge seulement s'il y a des non-lues */}
+                {notifications.some(n => n.unread) && (
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
+                )}
+              </button>
+
+              {/* Menu déroulant des notifications */}
+              {isNotificationsOpen && (
+                <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 z-50 animate-fade-in overflow-hidden">
+                  
+                  {/* En-tête du menu */}
+                  <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <h3 className="font-bold text-slate-800">Notifications</h3>
+                    <button onClick={handleMarkAllAsRead} 
+                        className="text-xs text-indigo-600 hover:text-indigo-700 font-semibold transition-colors">
+                              Tout marquer comme lu
+                    </button>
+                  </div>
+                  
+                  {/* Liste défilante */}
+                  <div className="max-h-[320px] overflow-y-auto custom-scrollbar">
+                    {notifications.map((notif) => (
+                      <div 
+                        key={notif.id} 
+                        className={`p-4 border-b border-slate-50 hover:bg-slate-50 cursor-pointer transition-colors flex flex-col gap-1 ${notif.unread ? 'bg-indigo-50/30' : ''}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          {/* Petit point bleu pour les non-lues */}
+                          <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${notif.unread ? 'bg-indigo-600' : 'bg-transparent'}`}></div>
+                          <div>
+                            <p className={`text-sm ${notif.unread ? 'text-slate-800 font-semibold' : 'text-slate-600 font-medium'}`}>
+                              {notif.text}
+                            </p>
+                            <span className="text-xs text-slate-400 font-medium mt-1 inline-block">{notif.time}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Footer du menu */}
+                  <div 
+  onClick={handleViewAllNotifications}
+  className="p-3 text-center border-t border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors"
+>
+  <span className="text-sm text-indigo-600 font-bold">Voir toutes les notifications</span>
+</div>
+                </div>
+              )}
+            </div>
+
+            {/* Avatar Profil */}
+            <div className="flex items-center gap-3 border-l border-slate-200 pl-6 cursor-pointer hover:opacity-80 transition-opacity">
               <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
                 RH
               </div>
             </div>
+            
           </div>
         </header>
 
@@ -457,7 +627,9 @@ const openCandidateProfile = (candidate) => {
           {activeTab === 'jobs' && renderJobs()}
           {activeTab === 'candidates' && renderCandidates()}
           {activeTab === 'settings' && renderSettings()}
+          {activeTab === 'notifications' && renderNotifications()} {}
         </div>
+
       </main>
 
       {/* Modales (Toujours en dehors du main) */}
@@ -473,5 +645,7 @@ const openCandidateProfile = (candidate) => {
       />
 
     </div>
+
+    
   );
 }
