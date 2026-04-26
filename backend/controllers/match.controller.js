@@ -3,8 +3,9 @@ const Match        = require('../models/Match')
 const Utilisateur  = require('../models/Utilisateur')
 const OffreTravail = require('../models/OffreTravail')
 const Candidature  = require('../models/Candidature')
-const CV           = require('../models/CV')                          // ← new import
-const { createNotification } = require('../utils/notification')
+const CV           = require('../models/CV')
+const { createNotification }      = require('../utils/notification')
+const { verifierFiltrePersonnel } = require('../utils/filtrePersonnel')
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper — call the Python AI service
@@ -23,10 +24,11 @@ const callAI = async (cvText, jobText) => {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Helper — load & validate CV text for a candidate
+// Helper — load candidate with CV text + personal info for filtering
 // ─────────────────────────────────────────────────────────────────────────────
-const getCvText = async (userId) => {
+const getCandidatAvecCV = async (userId) => {
   const candidat = await Utilisateur.findById(userId).populate('idCv')
+
   if (!candidat?.idCv)
     throw { status: 400, message: 'CV not found. Please fill in your CV first.' }
 
@@ -34,19 +36,21 @@ const getCvText = async (userId) => {
   if (!cvText || cvText.trim().length < 30)
     throw { status: 400, message: 'Your CV has too little information. Please complete it.' }
 
-  return cvText
+  return { candidat, cvText }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/match/recommandations
-// Returns the single best-matching open job the candidate hasn't seen yet
+// Silently skips offers whose personal filters the candidate doesn't meet.
 // ─────────────────────────────────────────────────────────────────────────────
 const getRecommandations = async (req, res) => {
   try {
-    const cvText = await getCvText(req.user._id).catch(e => {
+    let candidat, cvText
+    try {
+      ({ candidat, cvText } = await getCandidatAvecCV(req.user._id))
+    } catch (e) {
       return res.status(e.status || 500).json({ error: e.message })
-    })
-    if (!cvText) return  // response already sent above
+    }
 
     const [existingMatches, existingCandidatures] = await Promise.all([
       Match.find({ idCandidat: req.user._id }).select('idOffre'),
@@ -66,8 +70,18 @@ const getRecommandations = async (req, res) => {
     if (offres.length === 0)
       return res.json({ match: null, message: 'No new offers to suggest.' })
 
+    // ── Pre-AI filter: remove offers whose personal filters don't match ───────
+    const offresEligibles = offres.filter(offre => {
+      const { passe } = verifierFiltrePersonnel(candidat, offre)
+      return passe
+    })
+
+    if (offresEligibles.length === 0)
+      return res.json({ match: null, message: 'No new offers to suggest.' })
+
+    // ── AI scoring on eligible offers only ────────────────────────────────────
     const scored = await Promise.all(
-      offres.map(async (offre) => {
+      offresEligibles.map(async (offre) => {
         const jobText = `Title: ${offre.titre}. Description: ${offre.description}. Requirements: ${offre.requis?.join(', ')}`
         const score   = await callAI(cvText, jobText)
         return { offre, score }
@@ -97,15 +111,22 @@ const getRecommandations = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/match/score/:offreId
+// Returns AI score + whether the candidate passes the personal filter.
 // ─────────────────────────────────────────────────────────────────────────────
 const getScoreForOffre = async (req, res) => {
   try {
-    let cvText
-    try { cvText = await getCvText(req.user._id) }
-    catch (e) { return res.status(e.status || 500).json({ error: e.message }) }
+    let candidat, cvText
+    try {
+      ({ candidat, cvText } = await getCandidatAvecCV(req.user._id))
+    } catch (e) {
+      return res.status(e.status || 500).json({ error: e.message })
+    }
 
     const offre = await OffreTravail.findById(req.params.offreId)
     if (!offre) return res.status(404).json({ error: 'Offer not found' })
+
+    // Check personal filter — inform the frontend but don't block
+    const filtreResult = verifierFiltrePersonnel(candidat, offre)
 
     const jobText = `${offre.titre} ${offre.description} ${offre.requis?.join(' ')}`
     const score   = await callAI(cvText, jobText)
@@ -117,9 +138,14 @@ const getScoreForOffre = async (req, res) => {
     )
 
     res.json({
-      matchScore : Math.round(score * 100),
-      offreId    : offre._id,
-      updatedAt  : matchRecord.dateCalcul
+      matchScore        : Math.round(score * 100),
+      offreId           : offre._id,
+      updatedAt         : matchRecord.dateCalcul,
+      // Let the frontend decide how to surface this
+      filtrePersonnel   : {
+        passe  : filtreResult.passe,
+        raison : filtreResult.passe ? null : filtreResult.raison
+      }
     })
   } catch (err) {
     res.status(500).json({ error: err.message })
@@ -128,12 +154,16 @@ const getScoreForOffre = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/match/apply/:offreId
+// Blocks application when personal filter not met.
 // ─────────────────────────────────────────────────────────────────────────────
 const applyWithMatch = async (req, res) => {
   try {
-    let cvText
-    try { cvText = await getCvText(req.user._id) }
-    catch (e) { return res.status(e.status || 500).json({ error: e.message }) }
+    let candidat, cvText
+    try {
+      ({ candidat, cvText } = await getCandidatAvecCV(req.user._id))
+    } catch (e) {
+      return res.status(e.status || 500).json({ error: e.message })
+    }
 
     const offre = await OffreTravail.findById(req.params.offreId)
     if (!offre) return res.status(404).json({ error: 'Offer not found' })
@@ -142,6 +172,15 @@ const applyWithMatch = async (req, res) => {
 
     const existing = await Candidature.findOne({ idCandidat: req.user._id, idOffre: offre._id })
     if (existing) return res.status(400).json({ error: 'You have already applied to this offer.' })
+
+    // ── Personal filter check ─────────────────────────────────────────────────
+    const filtreResult = verifierFiltrePersonnel(candidat, offre)
+    if (!filtreResult.passe) {
+      return res.status(403).json({
+        error          : filtreResult.raison,
+        filtreEchoue   : true
+      })
+    }
 
     let matchRecord = await Match.findOne({ idCandidat: req.user._id, idOffre: offre._id })
     if (!matchRecord) {

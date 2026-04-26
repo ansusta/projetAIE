@@ -4,45 +4,47 @@ export const authService = {
   login: async (credentials) => {
     const payload = {
       email: credentials.email,
-      motDePasse: credentials.password 
+      motDePasse: credentials.password
     };
     const response = await api.post('/api/auth/login', payload);
-    
     if (response.data.token) {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
     }
     return response.data;
   },
-// Add this new function to auth.service.js
-// Replace the previous updateProfile with this one in auth.service.js
+
   updateProfile: async (userData) => {
-    // Because of multer, we MUST send a FormData object, not standard JSON
     const formData = new FormData();
-    
-    // Append standard fields
-    if (userData.prenom) formData.append('prenom', userData.prenom);
-    if (userData.nom) formData.append('nom', userData.nom);
-    if (userData.telephone) formData.append('telephone', userData.telephone);
-    
-    // Express/Multer typically parses nested objects via bracket notation
+
+    // Text fields — only append when defined (empty string is a valid update)
+    const textFields = ['prenom', 'nom', 'telephone', 'bio', 'genre', 'dateNaissance'];
+    textFields.forEach(f => {
+      if (userData[f] !== undefined && userData[f] !== null) {
+        formData.append(f, userData[f]);
+      }
+    });
+
+    // Nested address
     if (userData.adresse) {
-      if (userData.adresse.numeroRue) formData.append('adresse[numeroRue]', userData.adresse.numeroRue);
-      if (userData.adresse.nomRue) formData.append('adresse[nomRue]', userData.adresse.nomRue);
-      if (userData.adresse.codePostal) formData.append('adresse[codePostal]', userData.adresse.codePostal);
-      if (userData.adresse.ville) formData.append('adresse[ville]', userData.adresse.ville);
+      const addr = userData.adresse;
+      if (addr.numeroRue  !== undefined) formData.append('adresse[numeroRue]',  addr.numeroRue);
+      if (addr.nomRue     !== undefined) formData.append('adresse[nomRue]',     addr.nomRue);
+      if (addr.codePostal !== undefined) formData.append('adresse[codePostal]', addr.codePostal);
+      if (addr.ville      !== undefined) formData.append('adresse[ville]',      addr.ville);
+      if (addr.region     !== undefined) formData.append('adresse[region]',     addr.region);
+      if (addr.pays       !== undefined) formData.append('adresse[pays]',       addr.pays);
     }
 
-    // Append the file if the user uploaded one
-    if (userData.photoProfil) {
+    // Photo file
+    if (userData.photoProfil instanceof File) {
       formData.append('photoProfil', userData.photoProfil);
     }
 
-    // Pass formData directly. Axios will automatically set the 'multipart/form-data' header.
     const response = await api.put('/api/auth/update-profile', formData);
-    
     if (response.data.user) {
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      const stored = JSON.parse(localStorage.getItem('user') || '{}');
+      localStorage.setItem('user', JSON.stringify({ ...stored, ...response.data.user }));
     }
     return response.data;
   },
@@ -55,7 +57,6 @@ export const authService = {
       nom: data.lastName,
       prenom: data.firstName,
       dateNaissance: data.birthDate,
-      // Nested object mapping exactly to your Mongoose schema
       adresse: {
         numeroRue: data.streetNumber,
         nomRue: data.streetName,
@@ -63,12 +64,10 @@ export const authService = {
         codePostal: data.zipCode,
         ville: data.city,
         region: data.region,
-        pays: data.country
+        pays: data.country,
       }
     };
-    
     const response = await api.post('/api/auth/signup/candidat', payload);
-    
     if (response.data.token) {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
@@ -81,10 +80,9 @@ export const authService = {
       email: data.email,
       motDePasse: data.password,
       telephone: data.phone,
-      nomEntreprise: data.companyName, 
+      nomEntreprise: data.companyName,
       secteurActivite: data.industry,
       descriptionEntreprise: data.description,
-      // Nested object mapping exactly to your Mongoose schema
       adresse: {
         numeroRue: data.streetNumber,
         nomRue: data.streetName,
@@ -92,12 +90,10 @@ export const authService = {
         codePostal: data.zipCode,
         ville: data.city,
         region: data.region,
-        pays: data.country
+        pays: data.country,
       }
     };
-    
     const response = await api.post('/api/auth/signup/recruteur', payload);
-    
     if (response.data.token) {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
@@ -105,30 +101,27 @@ export const authService = {
     return response.data;
   },
 
-// In auth.service.js, replace your logout function with this:
   logout: () => {
-    // We just remove the user and token from the browser. 
-    // No backend call needed since we use JWT!
     localStorage.removeItem('user');
     localStorage.removeItem('token');
   },
-  // Add this inside auth.service.js
+
   getMe: async () => {
     const response = await api.get('/api/auth/me');
     return response.data;
   },
-  // Add these inside your auth.service.js object:
-  
+
   updatePreferences: async (preferencesData) => {
-    // Matches your router.put('/preferences') endpoint
-    const response = await api.put('/api/auth/preferences', preferencesData); 
+    const response = await api.put('/api/auth/preferences', preferencesData);
     return response.data;
   },
 
   changePassword: async (passwordData) => {
-    // Assuming you have a route like this for passwords
     const response = await api.put('/api/auth/change-password', passwordData);
     return response.data;
   },
-  
+  getPublicProfile: async (id) => {
+    const response = await api.get(`/api/auth/users/${id}/profil`);
+    return response.data;
+  },
 };

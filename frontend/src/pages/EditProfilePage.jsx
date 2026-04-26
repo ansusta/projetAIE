@@ -1,10 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   User, Save, ChevronLeft, Loader2, Camera,
-  Lock, Settings2, X, Plus, Eye, EyeOff,
+  Lock, Settings2, X, Plus, Eye, EyeOff, Calendar,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/auth.service';
+
+const GENRE_OPTIONS = [
+  { value: 'homme',       label: 'Homme'                    },
+  { value: 'femme',       label: 'Femme'                    },
+  { value: 'nonSpecifie', label: 'Préfère ne pas préciser'  },
+];
+const CONTRACT_COLOR = {
+  CDI:       'bg-blue-50 text-blue-700 border-blue-100',
+  CDD:       'bg-amber-50 text-amber-700 border-amber-100',
+  stage:     'bg-indigo-50 text-indigo-700 border-indigo-100',
+  freelance: 'bg-purple-50 text-purple-700 border-purple-100',
+};
 
 export default function EditProfilePage() {
   const navigate     = useNavigate();
@@ -23,13 +35,15 @@ export default function EditProfilePage() {
 
   const [formData, setFormData] = useState({
     prenom: '', nom: '', telephone: '', bio: '',
+    genre:  'nonSpecifie',
+    dateNaissance: '',
     numeroRue: '', nomRue: '', codePostal: '', ville: '',
     photoFile: null,
   });
 
   const [preferencesData, setPreferencesData] = useState({
     salaireMinSouhaite:      '',
-    typesContratSouhaite:    '',
+    typesContratSouhaite: [],
     secteursSouhaites:       [],
     localisationsSouhaitees: '',
     disponibilite:           '',
@@ -50,10 +64,14 @@ export default function EditProfilePage() {
 
     setFormData(prev => ({
       ...prev,
-      prenom:     storedUser.prenom              || '',
-      nom:        storedUser.nom                 || '',
-      telephone:  storedUser.telephone           || '',
-      bio:        storedUser.bio                 || '',
+      prenom:         storedUser.prenom              || '',
+      nom:            storedUser.nom                 || '',
+      telephone:      storedUser.telephone           || '',
+      bio:            storedUser.bio                 || '',
+      genre:          storedUser.genre               || 'nonSpecifie',
+      dateNaissance:  storedUser.dateNaissance
+        ? new Date(storedUser.dateNaissance).toISOString().split('T')[0]
+        : '',
       numeroRue:  storedUser.adresse?.numeroRue  || '',
       nomRue:     storedUser.adresse?.nomRue     || '',
       codePostal: storedUser.adresse?.codePostal || '',
@@ -64,7 +82,8 @@ export default function EditProfilePage() {
     setPreferencesData({
       salaireMinSouhaite: prefs.salaireMinSouhaite || '',
       typesContratSouhaite: Array.isArray(prefs.typesContratSouhaite)
-        ? prefs.typesContratSouhaite.join(', ') : '',
+  ? prefs.typesContratSouhaite
+  : [],
       secteursSouhaites: Array.isArray(prefs.secteursSouhaites)
         ? prefs.secteursSouhaites : [],
       localisationsSouhaitees: Array.isArray(prefs.localisationsSouhaitees)
@@ -102,10 +121,12 @@ export default function EditProfilePage() {
     setIsLoadingProfile(true);
     try {
       await authService.updateProfile({
-        prenom:    formData.prenom,
-        nom:       formData.nom,
-        telephone: formData.telephone,
-        bio:       formData.bio,
+        prenom:         formData.prenom,
+        nom:            formData.nom,
+        telephone:      formData.telephone,
+        bio:            formData.bio,
+        genre:          formData.genre,
+        dateNaissance:  formData.dateNaissance || undefined,
         adresse: {
           numeroRue:  formData.numeroRue,
           nomRue:     formData.nomRue,
@@ -116,7 +137,7 @@ export default function EditProfilePage() {
       });
       const fresh = await authService.getMe();
       localStorage.setItem('user', JSON.stringify(fresh));
-      flash('success', 'Profil mis à jour !');
+      flash('success', 'Profil mis à jour avec succès !');
     } catch (err) {
       flash('error', err.response?.data?.error || 'Erreur lors de la mise à jour du profil.');
     } finally {
@@ -130,8 +151,7 @@ export default function EditProfilePage() {
     try {
       await authService.updatePreferences({
         salaireMinSouhaite: Number(preferencesData.salaireMinSouhaite) || 0,
-        typesContratSouhaite: preferencesData.typesContratSouhaite
-          .split(',').map(s => s.trim()).filter(Boolean),
+        typesContratSouhaite: preferencesData.typesContratSouhaite,
         secteursSouhaites: preferencesData.secteursSouhaites,
         localisationsSouhaitees: preferencesData.localisationsSouhaitees
           .split(',').map(s => s.trim()).filter(Boolean),
@@ -195,7 +215,9 @@ export default function EditProfilePage() {
       {hint && <p className="text-xs text-slate-400 mt-1">{hint}</p>}
       {label.includes('Confirmer') && value && (
         <p className={`text-xs mt-1 ${value === passwordData.nouveauMotDePasse ? 'text-green-600' : 'text-red-500'}`}>
-          {value === passwordData.nouveauMotDePasse ? '✓ Les mots de passe correspondent' : 'Les mots de passe ne correspondent pas'}
+          {value === passwordData.nouveauMotDePasse
+            ? '✓ Les mots de passe correspondent'
+            : 'Les mots de passe ne correspondent pas'}
         </p>
       )}
     </div>
@@ -204,15 +226,14 @@ export default function EditProfilePage() {
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
       <input
-        ref={fileInputRef}
-        type="file"
+        ref={fileInputRef} type="file"
         accept="image/jpeg,image/png,image/webp"
-        className="hidden"
-        onChange={handlePhotoChange}
+        className="hidden" onChange={handlePhotoChange}
       />
 
       <div className="max-w-3xl mx-auto space-y-6">
 
+        {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <button onClick={() => navigate('/dashboard')}
             className="p-2 bg-white hover:bg-slate-100 rounded-full shadow-sm transition-colors">
@@ -239,6 +260,7 @@ export default function EditProfilePage() {
             <h3 className="text-xl font-bold text-slate-800">Informations Personnelles</h3>
           </div>
           <form onSubmit={handleUpdateProfile} className="space-y-6">
+
             {/* Photo */}
             <div className="flex items-center gap-6">
               <div className="relative shrink-0">
@@ -262,6 +284,7 @@ export default function EditProfilePage() {
               </div>
             </div>
 
+            {/* Nom / Prénom */}
             <div className="grid grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Prénom</label>
@@ -275,13 +298,54 @@ export default function EditProfilePage() {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Téléphone</label>
-              <input type="tel" placeholder="06 12 34 56 78" className={inp}
-                value={formData.telephone}
-                onChange={e => setFormData({ ...formData, telephone: e.target.value })} />
+            {/* Téléphone / Date de naissance */}
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Téléphone</label>
+                <input type="tel" placeholder="06 12 34 56 78" className={inp}
+                  value={formData.telephone}
+                  onChange={e => setFormData({ ...formData, telephone: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-slate-400" />
+                  Date de naissance
+                  <span className="text-xs font-normal text-slate-400">(pour les filtres d'offres)</span>
+                </label>
+                <input type="date" className={inp}
+                  value={formData.dateNaissance}
+                  onChange={e => setFormData({ ...formData, dateNaissance: e.target.value })} />
+              </div>
             </div>
 
+            {/* Genre */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Genre
+                <span className="ml-2 text-xs font-normal text-slate-400">
+                  (utilisé pour le filtrage des offres)
+                </span>
+              </label>
+              <div className="grid grid-cols-3 gap-3">
+                {GENRE_OPTIONS.map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, genre: opt.value })}
+                    className={`px-3 py-3 rounded-xl text-sm font-medium border-2 transition-all ${
+                      formData.genre === opt.value
+                        ? 'border-blue-600 bg-blue-50 text-blue-700'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                    }`}
+                  >
+                    {formData.genre === opt.value && <span className="mr-1">✓</span>}
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Bio */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Bio</label>
               <textarea rows={3} className={inp} placeholder="Présentez-vous en quelques mots…"
@@ -289,6 +353,7 @@ export default function EditProfilePage() {
                 onChange={e => setFormData({ ...formData, bio: e.target.value })} />
             </div>
 
+            {/* Address */}
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
               <p className="text-sm font-semibold text-slate-700">Adresse</p>
               <div className="grid grid-cols-4 gap-3">
@@ -370,12 +435,42 @@ export default function EditProfilePage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Types de contrat</label>
-                <input type="text" placeholder="ex: CDI, Freelance, Stage" className={inp}
-                  value={preferencesData.typesContratSouhaite}
-                  onChange={e => setPreferencesData({ ...preferencesData, typesContratSouhaite: e.target.value })} />
-                <p className="text-xs text-slate-400 mt-1">Séparez par des virgules</p>
-              </div>
+  <label className="block text-sm font-medium text-slate-700 mb-2">
+    Types de contrat
+  </label>
+
+  <div className="flex flex-wrap gap-2">
+    {Object.keys(CONTRACT_COLOR).map((type) => {
+      const isSelected = preferencesData.typesContratSouhaite.includes(type);
+
+      return (
+        <button
+          key={type}
+          type="button"
+          onClick={() => {
+            const updated = isSelected
+              ? preferencesData.typesContratSouhaite.filter(t => t !== type) // remove
+              : [...preferencesData.typesContratSouhaite, type]; // add
+
+            setPreferencesData({
+              ...preferencesData,
+              typesContratSouhaite: updated,
+            });
+          }}
+          className={`px-3 py-1 rounded-full border text-sm transition ${
+            CONTRACT_COLOR[type]
+          } ${
+            isSelected
+              ? "ring-2 ring-offset-1 ring-slate-400 scale-105"
+              : "opacity-70 hover:opacity-100"
+          }`}
+        >
+          {type}
+        </button>
+      );
+    })}
+  </div>
+</div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Localisations souhaitées</label>
                 <input type="text" placeholder="ex: Alger, Oran, Remote" className={inp}
@@ -414,28 +509,19 @@ export default function EditProfilePage() {
             <h3 className="text-xl font-bold text-slate-800">Sécurité</h3>
           </div>
           <form onSubmit={handleUpdatePassword} className="space-y-5">
-            <PasswordField
-              label="Mot de passe actuel"
-              value={passwordData.ancienMotDePasse}
-              show={showOld}
+            <PasswordField label="Mot de passe actuel"
+              value={passwordData.ancienMotDePasse} show={showOld}
               onToggle={() => setShowOld(v => !v)}
-              onChange={e => setPasswordData({ ...passwordData, ancienMotDePasse: e.target.value })}
-            />
-            <PasswordField
-              label="Nouveau mot de passe"
-              value={passwordData.nouveauMotDePasse}
-              show={showNew}
+              onChange={e => setPasswordData({ ...passwordData, ancienMotDePasse: e.target.value })} />
+            <PasswordField label="Nouveau mot de passe"
+              value={passwordData.nouveauMotDePasse} show={showNew}
               onToggle={() => setShowNew(v => !v)}
               onChange={e => setPasswordData({ ...passwordData, nouveauMotDePasse: e.target.value })}
-              hint="Minimum 6 caractères"
-            />
-            <PasswordField
-              label="Confirmer le nouveau mot de passe"
-              value={passwordData.confirmerMotDePasse}
-              show={showConfirm}
+              hint="Minimum 6 caractères" />
+            <PasswordField label="Confirmer le nouveau mot de passe"
+              value={passwordData.confirmerMotDePasse} show={showConfirm}
               onToggle={() => setShowConfirm(v => !v)}
-              onChange={e => setPasswordData({ ...passwordData, confirmerMotDePasse: e.target.value })}
-            />
+              onChange={e => setPasswordData({ ...passwordData, confirmerMotDePasse: e.target.value })} />
             <div className="flex justify-end pt-2">
               <button type="submit" disabled={isLoadingPassword}
                 className="flex items-center gap-2 bg-slate-800 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-slate-900 disabled:opacity-60 transition-all">

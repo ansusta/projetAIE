@@ -18,9 +18,14 @@ export default function RegisterPage() {
     email: '', password: '', phone: '',
     streetNumber: '', streetName: '', addressComplement: '',
     zipCode: '', city: '', region: '', country: 'Algérie',
-    firstName: '', lastName: '', birthDate: '', bio: '',
+    firstName: '', lastName: '', birthDate: '', bio: '',   genre: 'nonSpecifie',
     companyName: '', industry: '', description: '',
   });
+  const GENRE_OPTIONS = [
+  { value: 'homme', label: 'Homme' },
+  { value: 'femme', label: 'Femme' },
+  { value: 'nonSpecifie', label: 'Préfère ne pas préciser' },
+];
 
   const navigate = useNavigate();
 
@@ -165,6 +170,29 @@ export default function RegisterPage() {
               value={formData.birthDate} onChange={e => setFormData({...formData, birthDate: e.target.value})} />
           </div>
         </div>
+        <div>
+  <label className="block text-sm font-medium text-slate-700 mb-2">
+    Genre
+  </label>
+
+  <div className="grid grid-cols-3 gap-3">
+    {GENRE_OPTIONS.map(opt => (
+      <button
+        key={opt.value}
+        type="button"
+        onClick={() => setFormData({ ...formData, genre: opt.value })}
+        className={`px-3 py-3 rounded-xl text-sm font-medium border-2 transition-all ${
+          formData.genre === opt.value
+            ? 'border-blue-600 bg-blue-50 text-blue-700'
+            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+        }`}
+      >
+        {formData.genre === opt.value && <span className="mr-1">✓</span>}
+        {opt.label}
+      </button>
+    ))}
+  </div>
+</div>
         <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-4">
           <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
             <MapPin className="w-4 h-4" /> Votre Adresse
