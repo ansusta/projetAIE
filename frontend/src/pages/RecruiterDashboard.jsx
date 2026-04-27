@@ -9,6 +9,7 @@ import {
   GraduationCap, Globe, Heart, FileText, ExternalLink,
 } from 'lucide-react';
 import FiltresPersonnelsForm from './Filtrespersonnelsform';
+import { authService } from '../services/auth.service';
 
 const TOKEN = () => localStorage.getItem('token');
 const apiFetch = async (path, opts = {}) => {
@@ -27,14 +28,14 @@ const apiFetch = async (path, opts = {}) => {
   return res.json();
 };
 
-// ── Status helpers ───────────────────────────────────────────────────────────
+// ── Status helpers ────────────────────────────────────────────────────────────
 const STATUTS = ['Recue', 'demandeDocSupp', 'convocationEntretien', 'Embauchee', 'refusee'];
 const STATUT_LABEL = {
-  Recue:                { label: 'Reçue',        color: 'bg-slate-100 text-slate-600'   },
-  demandeDocSupp:       { label: 'Docs requis',  color: 'bg-amber-50 text-amber-700'    },
-  convocationEntretien: { label: 'Entretien',    color: 'bg-blue-50 text-blue-700'      },
-  Embauchee:            { label: 'Embauché(e)',  color: 'bg-green-50 text-green-700'    },
-  refusee:              { label: 'Refusé(e)',    color: 'bg-red-50 text-red-600'        },
+  Recue:                { label: 'Reçue',        color: 'bg-slate-100 text-slate-600'  },
+  demandeDocSupp:       { label: 'Docs requis',  color: 'bg-amber-50 text-amber-700'   },
+  convocationEntretien: { label: 'Entretien',    color: 'bg-blue-50 text-blue-700'     },
+  Embauchee:            { label: 'Embauché(e)',  color: 'bg-green-50 text-green-700'   },
+  refusee:              { label: 'Refusé(e)',    color: 'bg-red-50 text-red-600'       },
 };
 const CONTRACT_COLOR = {
   CDI:       'bg-blue-50 text-blue-700 border-blue-100',
@@ -170,7 +171,9 @@ function CreateJobModal({ isOpen, onClose, onSuccess }) {
             className={`flex items-center gap-2 px-8 py-3 rounded-xl font-bold text-white transition-all ${
               isLoading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200'
             }`}>
-            {isLoading ? <><Loader2 className="w-5 h-5 animate-spin" /> Publication…</> : <><CheckCircle className="w-5 h-5" /> Publier l'offre</>}
+            {isLoading
+              ? <><Loader2 className="w-5 h-5 animate-spin" /> Publication…</>
+              : <><CheckCircle className="w-5 h-5" /> Publier l'offre</>}
           </button>
         </div>
       </div>
@@ -255,7 +258,7 @@ function PlanifierEntretienModal({ isOpen, onClose, candidatureId, candidatName,
   );
 }
 
-// ── Candidate Profile Modal (with real CV data) ───────────────────────────────
+// ── Candidate Profile Modal ───────────────────────────────────────────────────
 function CandidateProfileModal({ isOpen, onClose, candidature, onStatusChange }) {
   const navigate = useNavigate();
   const [cv, setCv] = useState(null);
@@ -265,7 +268,7 @@ function CandidateProfileModal({ isOpen, onClose, candidature, onStatusChange })
   const [entretienModal, setEntretienModal] = useState(false);
 
   const candidat = candidature?.idCandidat || {};
-  const offre = candidature?.idOffre || {};
+  const offre    = candidature?.idOffre    || {};
 
   useEffect(() => {
     if (!isOpen || !candidat._id) return;
@@ -299,11 +302,11 @@ function CandidateProfileModal({ isOpen, onClose, candidature, onStatusChange })
   const s = STATUT_LABEL[status] || STATUT_LABEL.Recue;
 
   const niveauColor = {
-    débutant: 'bg-slate-100 text-slate-600',
+    débutant:      'bg-slate-100 text-slate-600',
     intermédiaire: 'bg-blue-50 text-blue-600',
-    avancé: 'bg-indigo-50 text-indigo-600',
-    courant: 'bg-green-50 text-green-700',
-    natif: 'bg-emerald-50 text-emerald-700',
+    avancé:        'bg-indigo-50 text-indigo-600',
+    courant:       'bg-green-50 text-green-700',
+    natif:         'bg-emerald-50 text-emerald-700',
   };
 
   const fmt = (dateStr) => {
@@ -329,10 +332,9 @@ function CandidateProfileModal({ isOpen, onClose, candidature, onStatusChange })
                 <h2 className="text-2xl font-bold text-slate-800">{candidat.prenom} {candidat.nom}</h2>
                 <p className="text-indigo-600 font-semibold">{cv?.titrePoste || 'Candidat'}</p>
                 <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
-                  {candidat.email && <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" />{candidat.email}</span>}
+                  {candidat.email     && <span className="flex items-center gap-1"><Mail  className="w-3.5 h-3.5" />{candidat.email}</span>}
                   {candidat.telephone && <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" />{candidat.telephone}</span>}
                 </div>
-                {/* Personal info row */}
                 <div className="flex items-center gap-3 mt-1 text-xs text-slate-400">
                   {candidat.genre && candidat.genre !== 'nonSpecifie' && (
                     <span className="bg-slate-100 px-2 py-0.5 rounded-md">{genreLabel[candidat.genre] || candidat.genre}</span>
@@ -354,7 +356,6 @@ function CandidateProfileModal({ isOpen, onClose, candidature, onStatusChange })
 
               {/* LEFT: CV */}
               <div className="lg:col-span-2 space-y-5">
-                {/* Bio */}
                 {candidat.bio && (
                   <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
                     <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
@@ -370,7 +371,6 @@ function CandidateProfileModal({ isOpen, onClose, candidature, onStatusChange })
                   </div>
                 ) : cv ? (
                   <>
-                    {/* Compétences */}
                     {cv.competences?.length > 0 && (
                       <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
                         <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -384,7 +384,6 @@ function CandidateProfileModal({ isOpen, onClose, candidature, onStatusChange })
                       </div>
                     )}
 
-                    {/* Expériences */}
                     {cv.experiences?.length > 0 && (
                       <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
                         <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -408,7 +407,6 @@ function CandidateProfileModal({ isOpen, onClose, candidature, onStatusChange })
                       </div>
                     )}
 
-                    {/* Formations */}
                     {cv.formations?.length > 0 && (
                       <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
                         <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -431,7 +429,6 @@ function CandidateProfileModal({ isOpen, onClose, candidature, onStatusChange })
                       </div>
                     )}
 
-                    {/* Langues */}
                     {cv.langues?.length > 0 && (
                       <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
                         <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -457,7 +454,6 @@ function CandidateProfileModal({ isOpen, onClose, candidature, onStatusChange })
 
               {/* RIGHT: Actions */}
               <div className="space-y-4">
-                {/* Statut */}
                 <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Statut candidature</h3>
                   <select value={status} disabled={saving}
@@ -467,10 +463,13 @@ function CandidateProfileModal({ isOpen, onClose, candidature, onStatusChange })
                       <option key={st} value={st}>{STATUT_LABEL[st].label}</option>
                     ))}
                   </select>
-                  {saving && <p className="text-xs text-slate-400 mt-1.5 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Mise à jour…</p>}
+                  {saving && (
+                    <p className="text-xs text-slate-400 mt-1.5 flex items-center gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Mise à jour…
+                    </p>
+                  )}
                 </div>
 
-                {/* Match score */}
                 {candidature.matchScore != null && (
                   <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm text-center">
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Score IA</p>
@@ -481,7 +480,6 @@ function CandidateProfileModal({ isOpen, onClose, candidature, onStatusChange })
                   </div>
                 )}
 
-                {/* Entretien info if scheduled */}
                 {candidature.entretien?.dateEntretien && (
                   <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
                     <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1 flex items-center gap-1">
@@ -499,13 +497,12 @@ function CandidateProfileModal({ isOpen, onClose, candidature, onStatusChange })
                   </div>
                 )}
 
-                {/* Actions */}
                 <div className="space-y-2">
                   <button
                     onClick={() => setEntretienModal(true)}
                     className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-xl font-bold transition-all shadow-lg shadow-indigo-200 text-sm">
                     <Calendar className="w-4 h-4" />
-                    {candidature.entretien?.dateEntretien ? 'Modifier l\'entretien' : 'Planifier un entretien'}
+                    {candidature.entretien?.dateEntretien ? "Modifier l'entretien" : 'Planifier un entretien'}
                   </button>
                   <button
                     onClick={() => navigate(`/user/${candidat._id}`)}
@@ -582,12 +579,12 @@ function CandidateRow({ cand, onStatusChange, onOpenProfile }) {
 
 // ── Offer Accordion ───────────────────────────────────────────────────────────
 function OfferAccordion({ offre, onDeleted }) {
-  const [open, setOpen] = useState(false);
-  const [candidatures, setCandidatures] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  const [open, setOpen]                       = useState(false);
+  const [candidatures, setCandidatures]       = useState([]);
+  const [loading, setLoading]                 = useState(false);
+  const [loaded, setLoaded]                   = useState(false);
   const [selectedCandidature, setSelectedCandidature] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [modalOpen, setModalOpen]             = useState(false);
 
   const toggle = async () => {
     if (!open && !loaded) {
@@ -690,98 +687,145 @@ function OfferAccordion({ offre, onDeleted }) {
 
 // ── Interview Calendar ────────────────────────────────────────────────────────
 function InterviewCalendar({ entretiens, loading }) {
+  const today = new Date();
+  const [viewYear, setViewYear]   = React.useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = React.useState(today.getMonth());
+  const [selectedDay, setSelectedDay] = React.useState(null);
+
   if (loading) return (
     <div className="flex items-center justify-center h-48">
       <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
     </div>
   );
-  if (entretiens.length === 0) return (
-    <div className="bg-white rounded-2xl border border-dashed border-slate-200 flex flex-col items-center justify-center py-16 text-slate-400 gap-3">
-      <CalendarDays className="w-12 h-12 text-slate-300" />
-      <p className="font-medium">Aucun entretien planifié</p>
-    </div>
-  );
 
-  const grouped = {};
+  const byDay = {};
   entretiens.forEach(e => {
-    const d = new Date(e.entretien.dateEntretien).toDateString();
-    if (!grouped[d]) grouped[d] = [];
-    grouped[d].push(e);
+    const d = new Date(e.entretien.dateEntretien);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if (!byDay[key]) byDay[key] = [];
+    byDay[key].push(e);
   });
 
+  const monthLabel  = new Date(viewYear, viewMonth, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const firstDow    = (new Date(viewYear, viewMonth, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const prevMonth = () => { if (viewMonth === 0) { setViewYear(y=>y-1); setViewMonth(11); } else setViewMonth(m=>m-1); setSelectedDay(null); };
+  const nextMonth = () => { if (viewMonth === 11) { setViewYear(y=>y+1); setViewMonth(0); } else setViewMonth(m=>m+1); setSelectedDay(null); };
+
+  const dayKey  = (d) => d ? `${viewYear}-${String(viewMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}` : '';
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+  const selectedEvents = selectedDay ? (byDay[dayKey(selectedDay)] || []) : [];
   const formatTime = (dt) => new Date(dt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  const formatDate = (dt) => new Date(dt).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
   return (
     <div className="space-y-6">
-      {Object.entries(grouped).map(([date, items]) => (
-        <div key={date}>
-          <div className="flex items-center gap-3 mb-3">
-            <div className="h-px flex-1 bg-slate-200" />
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 py-1 bg-white border border-slate-200 rounded-full">
-              {formatDate(items[0].entretien.dateEntretien)}
-            </span>
-            <div className="h-px flex-1 bg-slate-200" />
-          </div>
-          <div className="space-y-3">
-            {items.map(e => {
-              const c = e.idCandidat || {};
-              const offre = e.idOffre || {};
-              return (
-                <div key={e._id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex items-start gap-4 hover:border-indigo-200 transition-colors">
-                  <div className="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-sm shrink-0">
-                    {formatTime(e.entretien.dateEntretien)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-slate-800">{c.prenom || ''} {c.nom || ''}</p>
-                    <p className="text-sm text-slate-500 truncate">{offre.titre || 'Offre'}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">{c.email}</p>
-                    {e.entretien.feedbackRecruteur && (
-                      <p className="text-xs text-slate-500 mt-2 bg-slate-50 rounded-lg p-2 italic">"{e.entretien.feedbackRecruteur}"</p>
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+          <button onClick={prevMonth} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors">
+            <Calendar className="w-4 h-4" style={{ transform: 'scaleX(-1)' }} />
+          </button>
+          <h3 className="text-lg font-bold text-slate-800 capitalize">{monthLabel}</h3>
+          <button onClick={nextMonth} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors">
+            <Calendar className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-7 border-b border-slate-100">
+          {DAYS.map(d => (
+            <div key={d} className="py-2 text-center text-xs font-bold text-slate-400 uppercase tracking-wide">{d}</div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7">
+          {cells.map((day, idx) => {
+            const key      = dayKey(day);
+            const events   = day ? (byDay[key] || []) : [];
+            const isToday  = key === todayKey;
+            const isSelected = key !== '' && key === dayKey(selectedDay);
+            return (
+              <div key={idx}
+                onClick={() => day && setSelectedDay(isSelected ? null : day)}
+                className={`min-h-[64px] p-2 border-b border-r border-slate-50 transition-colors relative
+                  ${day ? 'cursor-pointer hover:bg-indigo-50/50' : ''}
+                  ${isSelected ? 'bg-indigo-50 ring-2 ring-inset ring-indigo-200' : ''}
+                  ${idx % 7 === 6 ? 'border-r-0' : ''}
+                `}>
+                {day && (
+                  <>
+                    <span className={`inline-flex items-center justify-center w-7 h-7 text-sm font-bold rounded-full
+                      ${isToday ? 'bg-indigo-600 text-white' : 'text-slate-700'}`}>
+                      {day}
+                    </span>
+                    {events.length > 0 && (
+                      <div className="mt-1 space-y-0.5">
+                        {events.slice(0, 2).map((e, i) => (
+                          <div key={i} className="text-[10px] font-semibold bg-indigo-100 text-indigo-700 rounded px-1 truncate leading-4">
+                            {formatTime(e.entretien.dateEntretien)} {e.idCandidat?.prenom || ''}
+                          </div>
+                        ))}
+                        {events.length > 2 && (
+                          <div className="text-[10px] text-indigo-500 font-bold">+{events.length - 2} de plus</div>
+                        )}
+                      </div>
                     )}
-                  </div>
-                  <span className={`text-xs font-bold px-3 py-1 rounded-full shrink-0 ${STATUT_LABEL.convocationEntretien.color}`}>
-                    Entretien
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Recruiter Profile Page (replaces the stub) ────────────────────────────────
-function RecruteurProfileSection({ recruiterId }) {
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!recruiterId) return;
-    apiFetch(`/api/auth/users/${recruiterId}/profil`)
-      .then(data => setProfile(data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [recruiterId]);
-
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-indigo-400" /></div>;
-  if (!profile) return null;
-
-  return (
-    <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-4">
-      <div className="flex items-center gap-4">
-        <div className="w-14 h-14 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-xl font-bold">
-          {profile.nomEntreprise?.[0] || '?'}
-        </div>
-        <div>
-          <h3 className="font-bold text-slate-900">{profile.nomEntreprise}</h3>
-          <p className="text-sm text-slate-500">{profile.secteurActivite}</p>
-          {profile.adresse?.ville && <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5"><MapPin className="w-3 h-3" />{profile.adresse.ville}</p>}
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
-      {profile.bio && <p className="text-sm text-slate-600 leading-relaxed">{profile.bio}</p>}
+
+      {selectedDay && (
+        <div className="bg-white rounded-3xl border border-indigo-200 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 bg-indigo-50/50">
+            <h3 className="font-bold text-indigo-800">
+              Entretiens du {new Date(viewYear, viewMonth, selectedDay).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </h3>
+          </div>
+          {selectedEvents.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 text-sm">Aucun entretien ce jour.</div>
+          ) : (
+            <div className="divide-y divide-slate-50">
+              {selectedEvents.map(e => {
+                const c    = e.idCandidat || {};
+                const offre = e.idOffre   || {};
+                return (
+                  <div key={e._id} className="px-6 py-4 flex items-start gap-4 hover:bg-slate-50 transition-colors">
+                    <div className="w-14 h-14 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-sm shrink-0">
+                      {formatTime(e.entretien.dateEntretien)}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-bold text-slate-800">{c.prenom || ''} {c.nom || ''}</p>
+                      <p className="text-sm text-slate-500">{offre.titre || 'Offre'}</p>
+                      {c.email && <p className="text-xs text-slate-400 mt-0.5">{c.email}</p>}
+                      {e.entretien.feedbackRecruteur && (
+                        <p className="text-xs text-slate-500 mt-2 bg-slate-50 border border-slate-100 rounded-lg p-2 italic">
+                          "{e.entretien.feedbackRecruteur}"
+                        </p>
+                      )}
+                    </div>
+                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-50 text-blue-700 shrink-0">Entretien</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {entretiens.length === 0 && (
+        <div className="bg-white rounded-2xl border border-dashed border-slate-200 flex flex-col items-center justify-center py-16 text-slate-400 gap-3">
+          <CalendarDays className="w-12 h-12 text-slate-300" />
+          <p className="font-medium">Aucun entretien planifié</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -791,22 +835,31 @@ export default function RecruiterDashboard() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user')) || {};
 
-  const [activeTab, setActiveTab] = useState('overview');
-  const [offres, setOffres] = useState([]);
+  const [activeTab, setActiveTab]         = useState('overview');
+  const [offres, setOffres]               = useState([]);
   const [offresLoading, setOffresLoading] = useState(false);
-  const [entretiens, setEntretiens] = useState([]);
+  const [entretiens, setEntretiens]       = useState([]);
   const [entretiensLoading, setEntretiensLoading] = useState(false);
   const [notifications, setNotifications] = useState([]);
-  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifOpen, setNotifOpen]         = useState(false);
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   const notifRef = useRef(null);
 
+  // ── Profile state — lives here so renderSettings can close over it ──────────
+  const [profileData, setProfileData]       = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileSaving, setProfileSaving]   = useState(false);
+  const [profileError, setProfileError]     = useState('');
+  const [profileSuccess, setProfileSuccess] = useState('');
+  const [profileForm, setProfileForm]       = useState(null);
+
   const stats = {
-    offresActives: offres.filter(o => o.statutOffre === 'ouvert').length,
+    offresActives:     offres.filter(o => o.statutOffre === 'ouvert').length,
     totalCandidatures: offres.reduce((s, o) => s + (o.applicantCount || 0), 0),
-    entretiensAVenir: entretiens.filter(e => new Date(e.entretien?.dateEntretien) >= new Date()).length,
+    entretiensAVenir:  entretiens.filter(e => new Date(e.entretien?.dateEntretien) >= new Date()).length,
   };
 
+  // Close notification dropdown on outside click
   useEffect(() => {
     const h = e => { if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false); };
     document.addEventListener('mousedown', h);
@@ -846,10 +899,33 @@ export default function RecruiterDashboard() {
     } catch { /* silent */ }
   }, []);
 
-  useEffect(() => { loadOffres(); loadNotifications(); }, [loadOffres, loadNotifications]);
+  useEffect(() => { loadOffres(); loadNotifications(); loadEntretiens(); }, [loadOffres, loadNotifications, loadEntretiens]);
+
+  // Lazy-load profile only when settings tab is first opened
   useEffect(() => {
-    if (activeTab === 'calendar' && entretiens.length === 0) loadEntretiens();
-  }, [activeTab, entretiens.length, loadEntretiens]);
+    if (activeTab !== 'settings' || profileData) return;
+    setProfileLoading(true);
+    authService.getMe()
+      .then(data => {
+        setProfileData(data);
+        setProfileForm({
+          nomEntreprise        : data.nomEntreprise         || '',
+          descriptionEntreprise: data.descriptionEntreprise || '',
+          secteurActivite      : data.secteurActivite       || '',
+          telephone            : data.telephone             || '',
+          adresse: {
+            numeroRue : data.adresse?.numeroRue  || '',
+            nomRue    : data.adresse?.nomRue     || '',
+            codePostal: data.adresse?.codePostal || '',
+            ville     : data.adresse?.ville      || '',
+            region    : data.adresse?.region     || '',
+            pays      : data.adresse?.pays       || '',
+          },
+        });
+      })
+      .catch(() => setProfileError('Impossible de charger le profil.'))
+      .finally(() => setProfileLoading(false));
+  }, [activeTab]);
 
   const markAllRead = async () => {
     try {
@@ -860,23 +936,19 @@ export default function RecruiterDashboard() {
 
   const unread = notifications.filter(n => !n.lu).length;
 
-  const handleJobCreated = () => {
-    setIsJobModalOpen(false);
-    loadOffres();
-  };
-
+  const handleJobCreated  = () => { setIsJobModalOpen(false); loadOffres(); };
   const handleOfferDeleted = (id) => setOffres(prev => prev.filter(o => o._id !== id));
-  const handleLogout = () => { localStorage.clear(); navigate('/login'); };
+  const handleLogout       = () => { localStorage.clear(); navigate('/login'); };
 
-  // ── Renderers ─────────────────────────────────────────────────────────────
+  // ── Renderers ──────────────────────────────────────────────────────────────
 
   const renderOverview = () => (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
-          { title: 'Offres actives', value: stats.offresActives, sub: `sur ${offres.length} total` },
-          { title: 'Candidatures reçues', value: stats.totalCandidatures, sub: 'toutes offres confondues' },
-          { title: 'Entretiens à venir', value: stats.entretiensAVenir, sub: 'prochains rendez-vous' },
+          { title: 'Offres actives',       value: stats.offresActives,     sub: `sur ${offres.length} total`      },
+          { title: 'Candidatures reçues',  value: stats.totalCandidatures, sub: 'toutes offres confondues'        },
+          { title: 'Entretiens à venir',   value: stats.entretiensAVenir,  sub: 'prochains rendez-vous'           },
         ].map((s, i) => (
           <div key={i} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
             <p className="text-sm font-medium text-slate-500 mb-2">{s.title}</p>
@@ -936,22 +1008,25 @@ export default function RecruiterDashboard() {
           <button onClick={() => setActiveTab('calendar')} className="text-sm font-semibold text-indigo-600 hover:text-indigo-700">Voir le calendrier</button>
         </div>
         <div className="p-4">
-          {entretiens.filter(e => new Date(e.entretien?.dateEntretien) >= new Date()).slice(0, 3).map(e => {
-            const c = e.idCandidat || {};
-            const offre = e.idOffre || {};
-            return (
-              <div key={e._id} className="flex items-center gap-4 p-3 hover:bg-slate-50 rounded-xl transition-colors">
-                <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold shrink-0">{c.nom?.[0] || '?'}</div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-slate-800">{c.prenom} {c.nom}</p>
-                  <p className="text-xs text-slate-500 truncate">{offre.titre}</p>
+          {entretiens
+            .filter(e => new Date(e.entretien?.dateEntretien) >= new Date())
+            .slice(0, 3)
+            .map(e => {
+              const c    = e.idCandidat || {};
+              const offre = e.idOffre   || {};
+              return (
+                <div key={e._id} className="flex items-center gap-4 p-3 hover:bg-slate-50 rounded-xl transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold shrink-0">{c.nom?.[0] || '?'}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-slate-800">{c.prenom} {c.nom}</p>
+                    <p className="text-xs text-slate-500 truncate">{offre.titre}</p>
+                  </div>
+                  <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg shrink-0">
+                    {new Date(e.entretien.dateEntretien).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </span>
                 </div>
-                <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg shrink-0">
-                  {new Date(e.entretien.dateEntretien).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </div>
-            );
-          })}
+              );
+            })}
           {entretiens.filter(e => new Date(e.entretien?.dateEntretien) >= new Date()).length === 0 && (
             <p className="text-center text-sm text-slate-400 py-4">Aucun entretien à venir.</p>
           )}
@@ -986,9 +1061,7 @@ export default function RecruiterDashboard() {
         </div>
       ) : (
         <div className="space-y-4">
-          {offres.map(o => (
-            <OfferAccordion key={o._id} offre={o} onDeleted={handleOfferDeleted} />
-          ))}
+          {offres.map(o => <OfferAccordion key={o._id} offre={o} onDeleted={handleOfferDeleted} />)}
         </div>
       )}
     </div>
@@ -1010,72 +1083,185 @@ export default function RecruiterDashboard() {
     </div>
   );
 
-  const renderSettings = () => (
-    <div className="space-y-8 max-w-3xl mx-auto pb-10">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-800">Paramètres du compte</h2>
-        <p className="text-slate-500 text-sm mt-1">Gérez les informations de votre entreprise.</p>
-      </div>
-      <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
-        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-6">
-          <Building className="w-5 h-5 text-indigo-600" /> Profil de l'entreprise
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[
-            { label: "Nom de l'entreprise", value: user.nomEntreprise || '' },
-            { label: "Secteur d'activité", value: user.secteurActivite || '' },
-            { label: "Email de contact", value: user.email || '' },
-            { label: "Téléphone", value: user.telephone || '' },
-          ].map((f, i) => (
-            <div key={i}>
-              <label className="block text-sm font-medium text-slate-700 mb-2">{f.label}</label>
-              <input type="text" defaultValue={f.value}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none text-slate-700 bg-slate-50 focus:bg-white transition-colors" />
+  const renderSettings = () => {
+    const inp = "w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none text-slate-700 bg-slate-50 focus:bg-white transition-colors";
+
+    const handleSave = async () => {
+      setProfileSaving(true);
+      setProfileError('');
+      setProfileSuccess('');
+      try {
+        await authService.updateProfile(profileForm);
+        const updated = await authService.getMe();
+        setProfileData(updated);
+        localStorage.setItem('user', JSON.stringify({
+          ...JSON.parse(localStorage.getItem('user') || '{}'),
+          nomEntreprise  : updated.nomEntreprise,
+          secteurActivite: updated.secteurActivite,
+        }));
+        setProfileSuccess('Profil mis à jour avec succès.');
+      } catch (e) {
+        setProfileError(e?.response?.data?.error || 'Erreur lors de la sauvegarde.');
+      } finally {
+        setProfileSaving(false);
+      }
+    };
+
+    const setField   = (key, val) => setProfileForm(prev => ({ ...prev, [key]: val }));
+    const setAdresse = (key, val) => setProfileForm(prev => ({ ...prev, adresse: { ...prev.adresse, [key]: val } }));
+
+    if (profileLoading || !profileForm) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-8 max-w-3xl mx-auto pb-10">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800">Paramètres du compte</h2>
+          <p className="text-slate-500 text-sm mt-1">Gérez les informations de votre entreprise.</p>
+        </div>
+
+        {/* Account meta card — read-only info + public profile link */}
+        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-5">
+          <div className="w-16 h-16 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-2xl font-black shrink-0">
+            {(profileData?.nomEntreprise || profileData?.email || 'R')[0].toUpperCase()}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-slate-900 text-lg truncate">{profileData?.nomEntreprise || '—'}</p>
+            <p className="text-sm text-slate-500 truncate">{profileData?.email}</p>
+            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
+                profileData?.etatValidation === 'valideParAdmin'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                  : 'bg-amber-50 text-amber-700 border-amber-100'
+              }`}>
+                {profileData?.etatValidation === 'valideParAdmin' ? '✓ Compte validé'
+                 : profileData?.etatValidation === 'enAttente'    ? '⏳ En attente de validation'
+                 : profileData?.etatValidation === 'valideParIA'  ? '🤖 Validé par IA'
+                 : profileData?.etatValidation === 'refuse'       ? '✗ Refusé'
+                 : profileData?.etatValidation}
+              </span>
+              {profileData?.createdAt && (
+                <span className="text-xs text-slate-400 flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  Membre depuis {new Date(profileData.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                </span>
+              )}
             </div>
-          ))}
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-slate-700 mb-2">Description</label>
-            <textarea rows="3" defaultValue={user.descriptionEntreprise || ''}
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none text-slate-700 bg-slate-50 focus:bg-white transition-colors resize-none" />
+            {/* Public profile link */}
+            {profileData?.id && (
+              <button
+                onClick={() => navigate(`/recruteur/${profileData.id}`)}
+                className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline transition-colors">
+                <ExternalLink className="w-3.5 h-3.5" />
+                Voir mon profil public
+              </button>
+            )}
           </div>
         </div>
-        <div className="flex justify-end mt-6">
-          <button className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-indigo-700 transition-all">
-            <Save className="w-4 h-4" /> Sauvegarder
+
+        {/* Feedback banners */}
+        {profileError   && <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-sm font-medium">{profileError}</div>}
+        {profileSuccess && <div className="p-4 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-2xl text-sm font-medium">{profileSuccess}</div>}
+
+        {/* Company info */}
+        <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-6">
+            <Building className="w-5 h-5 text-indigo-600" /> Informations de l'entreprise
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Nom de l'entreprise</label>
+              <input type="text" className={inp} value={profileForm.nomEntreprise}
+                onChange={e => setField('nomEntreprise', e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Secteur d'activité</label>
+              <input type="text" className={inp} value={profileForm.secteurActivite}
+                onChange={e => setField('secteurActivite', e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-1.5">
+                <Phone className="w-3.5 h-3.5 text-slate-400" /> Téléphone
+              </label>
+              <input type="text" className={inp} value={profileForm.telephone}
+                onChange={e => setField('telephone', e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-slate-400" /> Email (non modifiable)
+              </label>
+              <input type="email" disabled value={profileData?.email || ''}
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-400 bg-slate-100 cursor-not-allowed outline-none" />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-slate-700 mb-2">Description de l'entreprise</label>
+              <textarea rows={4} className={`${inp} resize-none`} value={profileForm.descriptionEntreprise}
+                onChange={e => setField('descriptionEntreprise', e.target.value)} />
+            </div>
+          </div>
+        </div>
+
+        {/* Address */}
+        <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-6">
+            <MapPin className="w-5 h-5 text-indigo-600" /> Adresse
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {[
+              { label: 'Numéro de rue', key: 'numeroRue'  },
+              { label: 'Nom de la rue', key: 'nomRue'     },
+              { label: 'Code postal',   key: 'codePostal' },
+              { label: 'Ville',         key: 'ville'      },
+              { label: 'Région',        key: 'region'     },
+              { label: 'Pays',          key: 'pays'       },
+            ].map(({ label, key }) => (
+              <div key={key}>
+                <label className="block text-sm font-medium text-slate-700 mb-2">{label}</label>
+                <input type="text" className={inp} value={profileForm.adresse[key]}
+                  onChange={e => setAdresse(key, e.target.value)} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Save button */}
+        <div className="flex justify-end">
+          <button onClick={handleSave} disabled={profileSaving}
+            className={`flex items-center gap-2 px-8 py-3 rounded-xl font-bold text-white transition-all shadow-lg shadow-indigo-200 ${
+              profileSaving ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'
+            }`}>
+            {profileSaving
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Sauvegarde…</>
+              : <><Save className="w-4 h-4" /> Sauvegarder</>}
           </button>
         </div>
       </div>
-      <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
-        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-6">
-          <Bell className="w-5 h-5 text-indigo-600" /> Notifications par email
-        </h3>
-        <div className="space-y-4">
-          {['Nouvelle candidature reçue', 'Rappels des entretiens', 'Mises à jour du compte'].map((label, i) => (
-            <label key={i} className="flex items-center justify-between cursor-pointer">
-              <span className="text-sm font-medium text-slate-700">{label}</span>
-              <input type="checkbox" defaultChecked={i < 2} className="w-5 h-5 accent-indigo-600 cursor-pointer" />
-            </label>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
+
+  // ── Shell ──────────────────────────────────────────────────────────────────
 
   const TAB_LABELS = {
     overview: `Bonjour, ${user.nomEntreprise || 'Recruteur'} 👋`,
-    jobs: 'Offres & Candidats',
-    calendar: 'Calendrier des entretiens',
-    settings: 'Paramètres',
+    jobs:      'Offres & Candidats',
+    calendar:  'Calendrier des entretiens',
+    settings:  'Paramètres',
   };
 
   const navItems = [
-    { id: 'overview', label: "Vue d'ensemble", icon: LayoutDashboard },
-    { id: 'jobs', label: 'Offres & Candidats', icon: Briefcase },
-    { id: 'calendar', label: 'Calendrier', icon: CalendarDays },
+    { id: 'overview',  label: "Vue d'ensemble",   icon: LayoutDashboard },
+    { id: 'jobs',      label: 'Offres & Candidats', icon: Briefcase       },
+    { id: 'calendar',  label: 'Calendrier',          icon: CalendarDays    },
   ];
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans">
+      {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-slate-200 flex flex-col z-20 shrink-0">
         <div className="h-20 flex items-center px-8 border-b border-slate-100 cursor-pointer" onClick={() => navigate('/')}>
           <h1 className="text-2xl font-black text-indigo-600 tracking-tight">MatchTalent.</h1>
@@ -1105,10 +1291,12 @@ export default function RecruiterDashboard() {
         </div>
       </aside>
 
+      {/* Main */}
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 z-10 shrink-0">
           <h2 className="text-xl font-bold text-slate-800">{TAB_LABELS[activeTab] || ''}</h2>
           <div className="flex items-center gap-4">
+            {/* Notifications */}
             <div className="relative" ref={notifRef}>
               <button onClick={() => setNotifOpen(v => !v)}
                 className={`relative p-2 transition-colors rounded-full ${notifOpen ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-50'}`}>
@@ -1146,6 +1334,8 @@ export default function RecruiterDashboard() {
                 </div>
               )}
             </div>
+
+            {/* User chip */}
             <div className="flex items-center gap-3 border-l border-slate-200 pl-4">
               <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm">
                 {(user.nomEntreprise || user.email || 'R')[0].toUpperCase()}
@@ -1161,7 +1351,7 @@ export default function RecruiterDashboard() {
         <div className="flex-1 overflow-y-auto p-6 sm:p-8">
           <div className="max-w-5xl mx-auto">
             {activeTab === 'overview' && renderOverview()}
-            {activeTab === 'jobs' && renderJobs()}
+            {activeTab === 'jobs'     && renderJobs()}
             {activeTab === 'calendar' && renderCalendar()}
             {activeTab === 'settings' && renderSettings()}
           </div>

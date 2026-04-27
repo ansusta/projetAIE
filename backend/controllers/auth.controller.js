@@ -3,6 +3,7 @@ const jwt    = require('jsonwebtoken')
 const Utilisateur = require('../models/Utilisateur')
 const cloudinary  = require('../config/cloud')
 const { Readable } = require('stream')
+const CV = require('../models/CV')
 
 // ── Cloudinary stream upload ──────────────────────────────────────────────────
 const streamUpload = (buffer) =>
@@ -88,15 +89,16 @@ const getMe = async (req, res) => {
       })
     }
 
-    if (user.role === 'recruteur') {
-      return res.json({
-        ...base,
-        nomEntreprise        : user.nomEntreprise,
-        descriptionEntreprise: user.descriptionEntreprise,
-        secteurActivite      : user.secteurActivite,
-        etatValidation       : user.etatValidation
-      })
-    }
+if (user.role === 'recruteur') {
+  return res.json({
+    ...base,
+    adresse              : user.adresse,          // ← was missing
+    nomEntreprise        : user.nomEntreprise,
+    descriptionEntreprise: user.descriptionEntreprise,
+    secteurActivite      : user.secteurActivite,
+    etatValidation       : user.etatValidation
+  })
+}
 
     res.json(base)
   } catch (err) {
@@ -253,17 +255,61 @@ const login = async (req, res) => {
 }
 
 // ── GET PUBLIC PROFILE ────────────────────────────────────────────────────────
+// ── GET PUBLIC PROFILE (candidat) ─────────────────────────────────────────────
 const getProfilPublic = async (req, res) => {
   try {
     const user = await Utilisateur.findById(req.params.id)
-      .select('nom prenom bio nomEntreprise secteurActivite adresse role photoProfil')
+      .select('nom prenom bio adresse role photoProfil idCv')
+
     if (!user) return res.status(404).json({ error: 'User not found' })
-    res.json(user)
+    if (user.role !== 'candidat')
+      return res.status(400).json({ error: 'Use /recruteurs/:id/profil for recruiter profiles' })
+
+    // Fetch the candidate's CV if it exists
+    const cv = user.idCv
+      ? await CV.findById(user.idCv).select(
+          'titrePoste formations experiences competences langues loisirs derniereMisAjour'
+        )
+      : null
+
+    res.json({
+      id         : user._id,
+      nom        : user.nom,
+      prenom     : user.prenom,
+      bio        : user.bio,
+      adresse    : user.adresse,
+      photoProfil: user.photoProfil,
+      cv         : cv || null
+    })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
 }
 
+// ── GET PUBLIC PROFILE (recruteur) ────────────────────────────────────────────
+const getProfilPublicRecruteur = async (req, res) => {
+  try {
+    const user = await Utilisateur.findById(req.params.id)
+      .select('nomEntreprise descriptionEntreprise secteurActivite adresse photoProfil role etatValidation')
+
+    if (!user) return res.status(404).json({ error: 'User not found' })
+    if (user.role !== 'recruteur')
+      return res.status(400).json({ error: 'This profile belongs to a non-recruiter user' })
+    if (user.etatValidation !== 'valideParAdmin')
+      return res.status(403).json({ error: 'Recruiter profile not yet approved' })
+
+    res.json({
+      id                   : user._id,
+      nomEntreprise        : user.nomEntreprise,
+      descriptionEntreprise: user.descriptionEntreprise,
+      secteurActivite      : user.secteurActivite,
+      adresse              : user.adresse,
+      photoProfil          : user.photoProfil
+    })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
 // ── UPDATE PREFERENCES (candidat only) ───────────────────────────────────────
 const mettreAJourPreferences = async (req, res) => {
   try {
@@ -283,5 +329,5 @@ const mettreAJourPreferences = async (req, res) => {
 module.exports = {
   signupCandidat, signupRecruteur, login,
   getMe, changePassword, updateProfile,
-  getProfilPublic, mettreAJourPreferences
+  getProfilPublic, mettreAJourPreferences,getProfilPublicRecruteur
 }

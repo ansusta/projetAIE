@@ -48,16 +48,25 @@ const soumettreCandidature = async (req, res) => {
 }
 
 // GET /api/candidatures/mes-candidatures
+// GET /api/candidatures/mes-candidatures
 const mesCandidatures = async (req, res) => {
   try {
     const candidatures = await Candidature.find({ idCandidat: req.user._id })
-      .populate('idOffre', 'titre localisation typeContrat idRecruteur')
-      .sort({ dateCandidature: -1 })
-    res.json(candidatures)
+      .populate({
+        path: 'idOffre',
+        select: 'titre localisation typeContrat idRecruteur',
+        populate: {
+          path: 'idRecruteur',
+          select: '_id nomEntreprise secteurActivite'
+        }
+      })
+      .sort({ dateCandidature: -1 });
+
+    res.json(candidatures);
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
-}
+};
 
 // GET /api/candidatures/offre/:offreId  — recruteur sees all applicants
 const candidaturesParOffre = async (req, res) => {

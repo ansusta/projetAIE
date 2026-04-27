@@ -9,7 +9,7 @@ const {
   changePassword,
   updateProfile,
    getProfilPublic,
-    mettreAJourPreferences
+    mettreAJourPreferences, getProfilPublicRecruteur
 } = require("../controllers/auth.controller")
 const { authenticate , authorize} = require("../middleware/auth.middleware")
 
@@ -18,6 +18,7 @@ router.post("/signup/candidat", signupCandidat)
 router.post("/signup/recruteur", signupRecruteur)
 router.post("/login", login)
 router.get('/users/:id/profil',  getProfilPublic)
+router.get('/recruteurs/:id/profil', getProfilPublicRecruteur)
 
 // Protected — require valid JWT
 router.get("/me", authenticate, getMe)

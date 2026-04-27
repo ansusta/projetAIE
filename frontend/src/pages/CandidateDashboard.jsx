@@ -152,7 +152,7 @@ function OffreDetailPanel({ offre, onApply, applying, alreadyApplied }) {
                 <p className="text-xs text-slate-500">{recruteur.secteurActivite}</p>
               </div>
             </div>
-            <button onClick={() => navigate(`/recruteur/${recruteur._id || 'unknown'}`)}
+            <button onClick={() => navigate(`/recruteurs/${recruteur._id || 'unknown'}`)}
               className="w-full text-xs text-blue-600 font-semibold py-2 border border-blue-100 rounded-lg hover:bg-blue-50 transition-colors flex items-center justify-center gap-1 mb-4">
               Voir le profil <ExternalLink className="w-3 h-3" />
             </button>

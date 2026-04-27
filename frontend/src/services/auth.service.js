@@ -124,4 +124,13 @@ export const authService = {
     const response = await api.get(`/api/auth/users/${id}/profil`);
     return response.data;
   },
+// authService.ts — fix getProfilPublicRecruteur
+getProfilPublicRecruteur: async (id) => {
+  const response = await api.get(`/api/auth/recruteurs/${id}/profil`);  // ← was '/api/recruteurs/:id/profil'
+  return response.data;
+},
+getOffresRecruteur: async (recruteurId) => {
+  const response = await api.get(`/api/offre?recruteurId=${recruteurId}&limit=50`);
+  return response.data.offres || [];
+},
 };
