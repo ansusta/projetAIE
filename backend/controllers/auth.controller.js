@@ -228,8 +228,10 @@ const login = async (req, res) => {
     if (user.statusCompte === 'bloque')
       return res.status(403).json({ error: 'Account is blocked' })
 
-    if (user.role === 'recruteur' && user.etatValidation !== 'valideParAdmin')
-      return res.status(403).json({ error: 'Account pending admin approval' })
+    // ── REMOVED: the 403 block for unverified recruiters ──────────────────
+    // They now get a token so they can access /verification-pending
+    // The frontend handles the redirect; sensitive routes stay protected
+    // by the ownerOrAdmin middleware on the backend.
 
     const token = jwt.sign(
       { id: user._id, role: user.role },
@@ -240,13 +242,15 @@ const login = async (req, res) => {
     res.json({
       token,
       user: {
-        id           : user._id,
-        email        : user.email,
-        role         : user.role,
-        nom          : user.nom          || null,
-        prenom       : user.prenom       || null,
-        nomEntreprise: user.nomEntreprise || null,
-        genre        : user.genre        || null
+        id            : user._id,
+        email         : user.email,
+        role          : user.role,
+        nom           : user.nom           || null,
+        prenom        : user.prenom        || null,
+        nomEntreprise : user.nomEntreprise  || null,
+        genre         : user.genre         || null,
+        etatValidation: user.etatValidation || null, // ← ADD THIS
+        motifRefus    : user.motifRefus     || null, // ← ADD THIS (for the rejection reason)
       }
     })
   } catch (err) {

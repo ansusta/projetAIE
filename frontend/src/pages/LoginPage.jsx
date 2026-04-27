@@ -18,39 +18,40 @@ export default function LoginPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError('');
+  setIsLoading(true);
 
-    try {
-      // Call your backend API
-      const data = await authService.login(formData);
-      console.log("Login successful!", data);
-      
-      // Extract the user role from the backend response
-      // Adapt "data.user.role" if your backend structures the response differently
-      const userRole = data.user?.role || data.role; 
+  try {
+    const data = await authService.login(formData);
 
-      // Store the role locally so we can protect routes later
-      if (userRole) {
-        localStorage.setItem('userRole', userRole);
-      }
-      
-      // REDIRECT BASED ON ROLE
-      if (userRole === 'recruiter' || userRole === 'recruteur') {
+    const userRole       = data.user?.role || data.role;
+    const etatValidation = data.user?.etatValidation || data.etatValidation;
+
+    // Persist what you need
+    if (userRole)        localStorage.setItem('userRole', userRole);
+    if (data.token)      localStorage.setItem('token', data.token);   // needed for API calls
+    if (etatValidation)  localStorage.setItem('etatValidation', etatValidation);
+
+    // REDIRECT BASED ON ROLE + VALIDATION STATE
+    if (userRole === 'recruteur') {
+      if (etatValidation === 'valideParAdmin') {
         navigate('/recruiter-dashboard');
       } else {
-        navigate('/dashboard');
+        // enAttente, valideParIA, or refuse → show verification page
+        navigate('/unverifiedRecruteur');
       }
-
-    } catch (err) {
-      // Handle errors (e.g., wrong password, user not found)
-      setError(err.response?.data?.message || 'Une erreur est survenue lors de la connexion.');
-    } finally {
-      setIsLoading(false);
+    } else {
+      navigate('/dashboard');
     }
-  };
+
+  } catch (err) {
+    setError(err.response?.data?.message || 'Une erreur est survenue lors de la connexion.');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 sm:p-8">

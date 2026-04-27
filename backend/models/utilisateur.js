@@ -48,7 +48,8 @@ const utilisateurSchema = new mongoose.Schema({
   etatValidation: {
     type: String,
     enum: ['enAttente', 'valideParIA', 'valideParAdmin', 'refuse']
-  }
+  },
+  motifRefus: { type: String, default: null }
 })
 
 module.exports = mongoose.model('Utilisateur', utilisateurSchema)

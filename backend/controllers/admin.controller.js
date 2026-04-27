@@ -96,6 +96,7 @@ const validerRecruteur = async (req, res) => {
     if (user.role !== 'recruteur') return res.status(400).json({ error: 'Not a recruiter' })
 
     user.etatValidation = decision
+    user.motifRefus = decision === 'refuse' ? (motif || null) : null
     await user.save()
 
     // Mark all their docs as verified
