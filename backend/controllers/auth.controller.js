@@ -256,30 +256,31 @@ const login = async (req, res) => {
 
 // ── GET PUBLIC PROFILE ────────────────────────────────────────────────────────
 // ── GET PUBLIC PROFILE (candidat) ─────────────────────────────────────────────
+// ── GET PUBLIC PROFILE (candidat) ─────────────────────────────────────────────
 const getProfilPublic = async (req, res) => {
   try {
+    // We add 'role' to the selection to help the frontend distinguish views
     const user = await Utilisateur.findById(req.params.id)
       .select('nom prenom bio adresse role photoProfil idCv')
 
     if (!user) return res.status(404).json({ error: 'User not found' })
+    
     if (user.role !== 'candidat')
       return res.status(400).json({ error: 'Use /recruteurs/:id/profil for recruiter profiles' })
 
-    // Fetch the candidate's CV if it exists
     const cv = user.idCv
-      ? await CV.findById(user.idCv).select(
-          'titrePoste formations experiences competences langues loisirs derniereMisAjour'
-        )
+      ? await CV.findById(user.idCv) // Select all relevant fields
       : null
 
     res.json({
-      id         : user._id,
-      nom        : user.nom,
-      prenom     : user.prenom,
-      bio        : user.bio,
-      adresse    : user.adresse,
+      id: user._id,
+      role: user.role, // Added this
+      nom: user.nom,
+      prenom: user.prenom,
+      bio: user.bio,
+      adresse: user.adresse,
       photoProfil: user.photoProfil,
-      cv         : cv || null
+      cv: cv || null
     })
   } catch (err) {
     res.status(500).json({ error: err.message })

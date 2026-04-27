@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import EditJobModal from '../components/EditJobModal'; // Ajustez le chemin selon votre dossier
 import {
   LayoutDashboard, Briefcase, CalendarDays, Settings, LogOut,
   Bell, Plus, MapPin, Clock, ChevronRight, ChevronDown,
   Loader2, CheckCircle, XCircle, AlertCircle, Star,
   Trash2, CheckCheck, RefreshCw, X, Save, Users,
   Building, Calendar, Mail, Phone, User, Code2,
-  GraduationCap, Globe, Heart, FileText, ExternalLink,
+  GraduationCap, Globe, Heart, FileText, ExternalLink
 } from 'lucide-react';
 import FiltresPersonnelsForm from './Filtrespersonnelsform';
 import { authService } from '../services/auth.service';
@@ -578,7 +579,7 @@ function CandidateRow({ cand, onStatusChange, onOpenProfile }) {
 }
 
 // ── Offer Accordion ───────────────────────────────────────────────────────────
-function OfferAccordion({ offre, onDeleted }) {
+function OfferAccordion({ offre, onDeleted, onUpdated }) {
   const [open, setOpen]                       = useState(false);
   const [candidatures, setCandidatures]       = useState([]);
   const [loading, setLoading]                 = useState(false);
@@ -618,6 +619,20 @@ function OfferAccordion({ offre, onDeleted }) {
       setSelectedCandidature(prev => ({ ...prev, etatCandidature: newStatus }));
     }
   };
+  const [editModalOpen, setEditModalOpen] = useState(false);
+
+  const hasApplicants = (offre.applicantCount && offre.applicantCount > 0) || candidatures.length > 0;
+
+  // NOUVELLE FONCTION : Gère l'appel API de modification
+  const handleEditSave = async (offreId, payload) => {
+    // apiFetch est disponible ici car il est défini au début de RecruiterDashboard.jsx
+    await apiFetch(`/api/offres/${offreId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+    // On met à jour la liste des offres après le succès
+    if (onUpdated) onUpdated();
+  };
 
   return (
     <>
@@ -645,10 +660,17 @@ function OfferAccordion({ offre, onDeleted }) {
               <div className="text-lg font-black text-indigo-700">{offre.applicantCount ?? '—'}</div>
               <div className="text-[10px] text-slate-400 font-semibold">Candidats</div>
             </div>
-            <button onClick={e => { e.stopPropagation(); handleDelete(); }}
-              className="p-1.5 text-slate-300 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50">
-              <Trash2 className="w-4 h-4" />
+            <button onClick={e => { e.stopPropagation(); setEditModalOpen(true); }}
+              className="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors rounded-lg hover:bg-indigo-50"
+              title="Modifier l'offre">
+              <Settings className="w-4 h-4" /> 
             </button>
+           {!hasApplicants && (
+              <button onClick={e => { e.stopPropagation(); handleDelete(); }}
+                className="p-1.5 text-slate-300 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50" title="Supprimer">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
             <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
           </div>
         </div>
@@ -680,6 +702,12 @@ function OfferAccordion({ offre, onDeleted }) {
         onClose={() => setModalOpen(false)}
         candidature={selectedCandidature}
         onStatusChange={handleStatusChange}
+      />
+      <EditJobModal
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        offre={offre}
+        onSave={handleEditSave}
       />
     </>
   );

@@ -19,7 +19,6 @@ import { Users, Calendar, Info } from 'lucide-react';
 const GENRE_OPTIONS = [
   { value: 'homme',       label: 'Hommes'   },
   { value: 'femme',       label: 'Femmes'   },
-  { value: 'autre',       label: 'Autres'   },
   { value: 'nonSpecifie', label: 'Non précisé' },
 ];
 
