@@ -30,11 +30,11 @@ const CONTRACT_COLOR = {
 };
 
 const STATUS_MAP = {
-  Recue:                { label: 'Reçue',          color: 'bg-slate-100 text-slate-600',  Icon: AlertCircle },
+  Recue:                { label: 'Reçue',          color: 'bg-slate-100 text-slate-600',   Icon: AlertCircle },
   demandeDocSupp:       { label: 'Docs demandés',  color: 'bg-amber-50 text-amber-700',   Icon: AlertCircle },
   convocationEntretien: { label: 'Entretien',       color: 'bg-blue-50 text-blue-700',     Icon: Calendar    },
   Embauchee:            { label: 'Acceptée 🎉',    color: 'bg-green-50 text-green-700',   Icon: CheckCircle },
-  refusee:              { label: 'Refusée',          color: 'bg-red-50 text-red-600',       Icon: XCircle     },
+  refusee:              { label: 'Refusée',          color: 'bg-red-50 text-red-600',       Icon: XCircle    },
 };
 
 // ── Match score ring ─────────────────────────────────────────────────────────
@@ -259,12 +259,6 @@ export default function CandidateDashboard() {
     setUnreadCount(0);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/');
-  };
-
   const handleSearch = (e) => {
     e.preventDefault();
     loadOffres(search);
@@ -357,7 +351,7 @@ export default function CandidateDashboard() {
                         ) : (
                           <button
                             onClick={e => { 
-                              e.stopPropagation(); // Prends the event so it doesn't open/close the accordion
+                              e.stopPropagation();
                               handleDirectApply(offre._id); 
                             }}
                             disabled={applyingId === offre._id}
@@ -533,6 +527,7 @@ export default function CandidateDashboard() {
             {candidatures.map(c => {
               const st = STATUS_MAP[c.etatCandidature] || STATUS_MAP.Recue;
               const offre = c.idOffre || {};
+              const StatusIcon = st.Icon; // <-- FIXED: Capitalized variable for Icon
               return (
                 <div key={c._id} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
                   <div className="flex items-start gap-4">
@@ -549,7 +544,7 @@ export default function CandidateDashboard() {
                       </p>
                     </div>
                     <span className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full shrink-0 ${st.color}`}>
-                      <st.Icon className="w-3.5 h-3.5" />
+                      <StatusIcon className="w-3.5 h-3.5" /> 
                       {st.label}
                     </span>
                   </div>
@@ -587,15 +582,16 @@ export default function CandidateDashboard() {
           <Logo />
         </div>
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          {navItems.map(({ id, label, icon: Icon }) => {
-            const active = activeTab === id;
+          {navItems.map((item) => {
+            const active = activeTab === item.id;
+            const NavIcon = item.icon; // <-- FIXED: Capitalized variable for Icon
             return (
-              <button key={id} onClick={() => setActiveTab(id)}
+              <button key={item.id} onClick={() => setActiveTab(item.id)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${
                   active ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                 }`}>
-                <Icon className={`w-5 h-5 ${active ? 'text-blue-600' : 'text-slate-400'}`} />
-                {label}
+                <NavIcon className={`w-5 h-5 ${active ? 'text-blue-600' : 'text-slate-400'}`} />
+                {item.label}
               </button>
             );
           })}
@@ -672,53 +668,19 @@ export default function CandidateDashboard() {
                       ))
                     )}
                   </div>
-                  {/* View all */}
-                  <button
-                    onClick={() => { setNotifOpen(false); navigate('/notifications'); }}
-                    className="w-full py-3 text-sm text-blue-600 font-semibold hover:bg-slate-50 transition-colors border-t border-slate-100 flex items-center justify-center gap-2"
-                  >
-                    Voir toutes les notifications
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
                 </div>
               )}
             </div>
-
-            <div className="h-6 w-px bg-slate-200" />
-
-            <button onClick={() => navigate('/edit-profile')} title="Paramètres"
-              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors">
-              <Settings className="w-5 h-5" />
-            </button>
-
-            <button onClick={handleLogout} title="Déconnexion"
-              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors">
-              <LogOut className="w-5 h-5" />
-            </button>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8">
-          <div className="max-w-4xl mx-auto">
+        {/* Scrollable Main Content Area - FIXED MISSING PART */}
+        <div className="flex-1 overflow-y-auto p-6 sm:p-8">
+          <div className="max-w-5xl mx-auto pb-12">
             {renderContent()}
           </div>
         </div>
 
-        {/* Mobile bottom nav */}
-        <nav className="md:hidden flex border-t border-slate-200 bg-white z-10">
-          {navItems.map(({ id, label, icon: Icon }) => {
-            const active = activeTab === id;
-            return (
-              <button key={id} onClick={() => setActiveTab(id)}
-                className={`flex-1 flex flex-col items-center py-3 gap-1 text-xs font-medium transition-colors ${
-                  active ? 'text-blue-600' : 'text-slate-400'
-                }`}>
-                <Icon className="w-5 h-5" />
-                {label}
-              </button>
-            );
-          })}
-        </nav>
       </main>
     </div>
   );

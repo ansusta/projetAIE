@@ -36,21 +36,40 @@ function PrefRow({ label, value, children }) {
 
 export default function ProfileTab() {
   const navigate = useNavigate();
-  const [user, setUser]         = useState({});
-  const [cv, setCv]             = useState(null);
-  const [cvLoading, setCvLoading] = useState(true);
-  const [cvError, setCvError]   = useState('');
+
+  // 1. We removed `setUser` because we don't need to update it here
+  const [user] = useState(() => {
+    try {
+      const userString = localStorage.getItem('user');
+      if (userString) {
+        return JSON.parse(userString);
+      }
+      return {};
+    } catch (error) {
+      console.error("Error parsing user data:", error);
+      return {}; 
+    }
+  });
+
+  // Check if the user object has any keys
+  const hasUser = Object.keys(user).length > 0;
+
+  const [cv, setCv]               = useState(null);
+  const [cvError, setCvError]     = useState('');
+  
+  // 2. Initialize loading intelligently: ONLY start loading if we have a user!
+  const [cvLoading, setCvLoading] = useState(hasUser);
 
   useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem('user'));
-    if (storedUser) setUser(storedUser);
-
-    cvService.getMyCV()
-      .then(data => setCv(data))
-      .catch(() => setCvError('Aucun CV pour le moment.'))
-      .finally(() => setCvLoading(false));
-  }, []);
-
+    // 3. We only fetch if we have a user. No "else" block needed anymore!
+    if (hasUser) {
+      cvService.getMyCV()
+        .then(data => setCv(data))
+        .catch(() => setCvError('Aucun CV pour le moment.'))
+        .finally(() => setCvLoading(false));
+    }
+  }, [hasUser]);
+  
   const formatLocation = () => {
     if (!user.adresse) return 'Non renseigné';
     const parts = [user.adresse.ville, user.adresse.codePostal].filter(Boolean);
