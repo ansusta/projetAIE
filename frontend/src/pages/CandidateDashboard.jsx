@@ -40,13 +40,12 @@ const CONTRACT_COLOR = {
 };
 
 const STATUS_MAP = {
-  Recue:                { label: 'Reçue',          color: 'bg-slate-100 text-slate-600',   Icon: AlertCircle },
+  Recue:                { label: 'Reçue',          color: 'bg-slate-100 text-slate-600',  Icon: AlertCircle },
   demandeDocSupp:       { label: 'Docs demandés',  color: 'bg-amber-50 text-amber-700',   Icon: AlertCircle },
   convocationEntretien: { label: 'Entretien',       color: 'bg-blue-50 text-blue-700',     Icon: Calendar    },
   Embauchee:            { label: 'Acceptée 🎉',    color: 'bg-green-50 text-green-700',   Icon: CheckCircle },
-  refusee:              { label: 'Refusée',          color: 'bg-red-50 text-red-600',       Icon: XCircle    },
+  refusee:              { label: 'Refusée',          color: 'bg-red-50 text-red-600',       Icon: XCircle     },
 };
-
 
 
 // ── Preference filter helper ──────────────────────────────────────────────────
@@ -378,6 +377,12 @@ export default function CandidateDashboard() {
     setUnreadCount(0);
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/');
+  };
+
   const handleSearch = (e) => {
     e.preventDefault();
     loadOffres(search);
@@ -661,16 +666,15 @@ export default function CandidateDashboard() {
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 z-10">
         <div className="p-6 border-b border-slate-100"><Logo /></div>
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          {navItems.map((item) => {
-            const active = activeTab === item.id;
-            const NavIcon = item.icon; // <-- FIXED: Capitalized variable for Icon
+          {navItems.map(({ id, label, icon: Icon }) => {
+            const active = activeTab === id;
             return (
-              <button key={item.id} onClick={() => setActiveTab(item.id)}
+              <button key={id} onClick={() => setActiveTab(id)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${
                   active ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                 }`}>
-                <NavIcon className={`w-5 h-5 ${active ? 'text-blue-600' : 'text-slate-400'}`} />
-                {item.label}
+                <Icon className={`w-5 h-5 ${active ? 'text-blue-600' : 'text-slate-400'}`} />
+                {label}
               </button>
             );
           })}
