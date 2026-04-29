@@ -20,6 +20,7 @@ const notificationRoutes = require('./routes/notification.routes')
 const matchRoutes = require ('./routes/match.routes');
 const cvRoutes           = require('./routes/cv.routes')  
 const app = express();
+const scheduleInterviewReminders = require('./services/reminderCron');
 
 app.use(cors());
 app.use(express.json());
@@ -66,12 +67,17 @@ app.use('/api/documents', documentRoutes);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/offre', offreRoutes);
+app.use('/api/offres', offreRoutes);
 app.use('/api/candidature', candidatureRoutes);
+app.use('/api/candidatures', candidatureRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notification', notificationRoutes)
+app.use('/api/notifications', notificationRoutes)
 app.use('/api/match', matchRoutes);
 app.use('/api/cv',           cvRoutes)     
 
+
+scheduleInterviewReminders();
 // After your routes
 app.use((err, req, res, next) => {
   if (err.name === "MulterError" || err.message.includes("Only PDF")) {

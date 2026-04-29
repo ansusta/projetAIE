@@ -1,30 +1,44 @@
 const Candidature  = require('../models/Candidature')
 const OffreTravail = require('../models/OffreTravail')
-const { createNotification } = require('../utils/notification')
-const Match = require('../models/Match')
+const Utilisateur  = require('../models/Utilisateur')
+const { createNotification }      = require('../utils/notification')
+const Match                       = require('../models/Match')
+const { verifierFiltrePersonnel } = require('../utils/filtrePersonnel')
 
 // POST /api/candidatures
 const soumettreCandidature = async (req, res) => {
   try {
     const { idOffre } = req.body
 
-    const offre = await OffreTravail.findById(idOffre)
-    if (!offre)                          return res.status(404).json({ error: 'Offer not found' })
-    if (offre.statutOffre !== 'ouvert')  return res.status(400).json({ error: 'Offer is closed' })
+    const [offre, candidat] = await Promise.all([
+      OffreTravail.findById(idOffre),
+      Utilisateur.findById(req.user._id)
+    ])
+
+    if (!offre)                         return res.status(404).json({ error: 'Offer not found' })
+    if (offre.statutOffre !== 'ouvert') return res.status(400).json({ error: 'Offer is closed' })
 
     const existing = await Candidature.findOne({ idCandidat: req.user._id, idOffre })
     if (existing) return res.status(400).json({ error: 'Already applied to this offer' })
+
+    // ── Personal filter check ─────────────────────────────────────────────────
+    const filtreResult = verifierFiltrePersonnel(candidat, offre)
+    if (!filtreResult.passe) {
+      return res.status(403).json({
+        error        : filtreResult.raison,
+        filtreEchoue : true
+      })
+    }
 
     const candidature = await Candidature.create({
       idCandidat: req.user._id,
       idOffre
     })
 
-    // notify the recruteur
     await createNotification({
       idUtilisateur: offre.idRecruteur,
-      contenu:        `Nouvelle candidature reçue pour l'offre "${offre.titre}"`,
-      idCandidature:  candidature._id
+      contenu:       `Nouvelle candidature reçue pour l'offre "${offre.titre}"`,
+      idCandidature: candidature._id
     })
 
     res.status(201).json(candidature)
@@ -34,16 +48,25 @@ const soumettreCandidature = async (req, res) => {
 }
 
 // GET /api/candidatures/mes-candidatures
+// GET /api/candidatures/mes-candidatures
 const mesCandidatures = async (req, res) => {
   try {
     const candidatures = await Candidature.find({ idCandidat: req.user._id })
-      .populate('idOffre', 'titre localisation typeContrat idRecruteur')
-      .sort({ dateCandidature: -1 })
-    res.json(candidatures)
+      .populate({
+        path: 'idOffre',
+        select: 'titre localisation typeContrat idRecruteur',
+        populate: {
+          path: 'idRecruteur',
+          select: '_id nomEntreprise secteurActivite'
+        }
+      })
+      .sort({ dateCandidature: -1 });
+
+    res.json(candidatures);
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
-}
+};
 
 // GET /api/candidatures/offre/:offreId  — recruteur sees all applicants
 const candidaturesParOffre = async (req, res) => {
@@ -106,13 +129,13 @@ const mettreAJourStatut = async (req, res) => {
       demandeDocSupp:       'Des documents supplémentaires ont été demandés pour votre candidature.',
       convocationEntretien: 'Vous avez été convoqué(e) à un entretien.',
       Embauchee:            'Félicitations ! Votre candidature a été acceptée.',
-      refusee:              'Votre candidature n\'a pas été retenue.'
+      refusee:              "Votre candidature n'a pas été retenue."
     }
     if (messages[etatCandidature]) {
       await createNotification({
         idUtilisateur: candidature.idCandidat,
-        contenu:        messages[etatCandidature],
-        idCandidature:  candidature._id
+        contenu:       messages[etatCandidature],
+        idCandidature: candidature._id
       })
     }
 
@@ -133,14 +156,14 @@ const planifierEntretien = async (req, res) => {
     if (candidature.idOffre.idRecruteur.toString() !== req.user._id.toString())
       return res.status(403).json({ error: 'Not your offer' })
 
-    candidature.entretien        = { dateEntretien, statut, feedbackRecruteur }
-    candidature.etatCandidature  = 'convocationEntretien'
+    candidature.entretien       = { dateEntretien, statut, feedbackRecruteur }
+    candidature.etatCandidature = 'convocationEntretien'
     await candidature.save()
 
     await createNotification({
       idUtilisateur: candidature.idCandidat,
-      contenu:        `Entretien planifié le ${new Date(dateEntretien).toLocaleDateString('fr-FR')}.`,
-      idCandidature:  candidature._id
+      contenu:       `Entretien planifié le ${new Date(dateEntretien).toLocaleDateString('fr-FR')}.`,
+      idCandidature: candidature._id
     })
 
     res.json(candidature)
@@ -148,7 +171,6 @@ const planifierEntretien = async (req, res) => {
     res.status(500).json({ error: err.message })
   }
 }
-
 
 // GET /api/candidatures/recruteur/grouped
 const getCandidaturesGrouped = async (req, res) => {
@@ -158,10 +180,9 @@ const getCandidaturesGrouped = async (req, res) => {
 
     const candidatures = await Candidature.find({ idOffre: { $in: offreIds } })
       .populate('idCandidat', 'nom prenom email telephone photoProfil')
-      .populate('idOffre', 'titre')
+      .populate('idOffre',    'titre')
       .sort({ dateCandidature: -1 })
 
-    // attach match score where it exists
     const withScores = await Promise.all(
       candidatures.map(async (c) => {
         const match = await Match.findOne({
@@ -193,13 +214,13 @@ const getEntretiens = async (req, res) => {
     const offreIds = offres.map(o => o._id)
 
     const candidatures = await Candidature.find({
-      idOffre:         { $in: offreIds },
-      etatCandidature: 'convocationEntretien',
+      idOffre:                   { $in: offreIds },
+      etatCandidature:           'convocationEntretien',
       'entretien.dateEntretien': { $exists: true }
     })
-    .populate('idCandidat', 'nom prenom email telephone')
-    .populate('idOffre', 'titre')
-    .sort({ 'entretien.dateEntretien': 1 })
+      .populate('idCandidat', 'nom prenom email telephone')
+      .populate('idOffre',    'titre')
+      .sort({ 'entretien.dateEntretien': 1 })
 
     res.json(candidatures)
   } catch (err) {
@@ -209,5 +230,6 @@ const getEntretiens = async (req, res) => {
 
 module.exports = {
   soumettreCandidature, mesCandidatures, candidaturesParOffre,
-  getCandidature, mettreAJourStatut, planifierEntretien , getEntretiens, getCandidaturesGrouped
+  getCandidature, mettreAJourStatut, planifierEntretien,
+  getEntretiens, getCandidaturesGrouped
 }

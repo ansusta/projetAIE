@@ -45,12 +45,13 @@ const uploadFile = async (req, res) => {
       `${Date.now()}-${req.file.originalname}`,
       {
         contentType: mimeType,
-        metadata: {
-          idCandidat:  req.body.idCandidat  || null,
-          idRecruteur: req.body.idRecruteur || null,
-          type:        normalizedType,
-          typeFichier: req.body.typeFichier || null,
-        },
+metadata: {
+  idCandidat:  req.body.idCandidat || null,
+  idRecruteur: req.user?.role === 'recruteur' ? req.user._id : (req.body.idRecruteur || null),
+  type:        normalizedType,
+  typeFichier: req.body.typeFichier || null,
+},
+
       }
     )
 
@@ -64,8 +65,8 @@ const uploadFile = async (req, res) => {
           formatFichier: mimeType,
           taille:       req.file.size,
           type:         normalizedType,
-          idCandidat:   req.body.idCandidat  || null,
-          idRecruteur:  req.body.idRecruteur || null,
+idCandidat:   req.body.idCandidat  || null,
+idRecruteur:  req.user?.role === 'recruteur' ? req.user._id : (req.body.idRecruteur || null),
           typeDocument: req.body.typeDocument || null,
           typeFichier:  req.body.typeFichier  || null,
           resume:       resumeText,
@@ -109,6 +110,17 @@ const downloadFile = async (req, res) => {
     const files = await bucket.find({ _id: fileId }).toArray()
     if (!files || files.length === 0)
       return res.status(404).json({ error: 'File not found' })
+
+    // ── Ownership check ──────────────────────────────────────────────────────
+    const doc = await Document.findOne({ fileId })
+    if (doc) {
+      const userId = req.user?._id?.toString()
+      const isOwner =
+        doc.idRecruteur?.toString() === userId ||
+        doc.idCandidat?.toString()  === userId
+      if (!isOwner && req.user?.role !== 'admin')
+        return res.status(403).json({ error: 'Access denied' })
+    }
 
     res.set('Content-Type',        files[0].contentType)
     res.set('Content-Disposition', `inline; filename="${files[0].filename}"`)
@@ -182,12 +194,32 @@ const triggerVerification = async (req, res) => {
     res.status(500).json({ error: err.message })
   }
 }
+// GET /api/documents/recruteur/status
+const getMyVerificationStatus = async (req, res) => {
+  try {
+    const user = await Utilisateur.findById(req.user._id).select('etatValidation motifRefus role')
+    if (!user || user.role !== 'recruteur')
+      return res.status(403).json({ error: 'Recruiters only' })
 
+    const docs = await Document.find({
+      idRecruteur: req.user._id,
+      type: 'docrecruteur',
+    }).select('nomFichier typeDocument dateUpload aiVerification estVerifie').sort({ dateUpload: -1 })
+
+    res.json({
+      etatValidation: user.etatValidation,   // 'enAttente' | 'valideParIA' | 'valideParAdmin' | 'refuse'
+      motifRefus:     user.motifRefus || null, // admin's rejection reason
+      documents:      docs,
+    })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
 module.exports = {
   uploadFile,
   downloadFile,
   deleteFile,
   getDocsByCandidat,
   getDocsByRecruteur,
-  triggerVerification,
+  triggerVerification, getMyVerificationStatus,
 }

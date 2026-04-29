@@ -11,11 +11,11 @@ const adresseSchema = new mongoose.Schema({
 })
 
 const preferenceSchema = new mongoose.Schema({
-  salaireMinSouhaite    : Number,
-  typesContratSouhaite  : [String],
-  secteursSouhaites     : [String],
+  salaireMinSouhaite     : Number,
+  typesContratSouhaite   : [String],
+  secteursSouhaites      : [String],
   localisationsSouhaitees: [String],
-  disponibilite         : Date
+  disponibilite          : Date
 })
 
 const utilisateurSchema = new mongoose.Schema({
@@ -31,10 +31,15 @@ const utilisateurSchema = new mongoose.Schema({
   prenom       : String,
   statusCompte : { type: String, enum: ['actif', 'bloque'] },
   dateNaissance: Date,
+  genre        : {
+    type    : String,
+    enum    : ['homme', 'femme', 'nonSpecifie'],
+    default : 'nonSpecifie'
+  },
   bio          : String,
   adresse      : adresseSchema,
   preference   : preferenceSchema,
-  idCv         : { type: mongoose.Schema.Types.ObjectId, ref: 'CV' }, // ← updated ref
+  idCv         : { type: mongoose.Schema.Types.ObjectId, ref: 'CV' },
 
   // recruteur-specific
   nomEntreprise        : String,
@@ -43,7 +48,8 @@ const utilisateurSchema = new mongoose.Schema({
   etatValidation: {
     type: String,
     enum: ['enAttente', 'valideParIA', 'valideParAdmin', 'refuse']
-  }
+  },
+  motifRefus: { type: String, default: null }
 })
 
 module.exports = mongoose.model('Utilisateur', utilisateurSchema)

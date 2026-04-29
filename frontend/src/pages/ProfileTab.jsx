@@ -3,7 +3,7 @@ import {
   User, MapPin, Mail, Phone, FileText, Edit2,
   Settings2, Briefcase, GraduationCap, Code2,
   Globe, Loader2, PenLine, Euro, Calendar,
-  Clock,
+  Clock, Cake 
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cvService } from '../services/cv.service';
@@ -16,11 +16,22 @@ const niveauColor = {
   natif:         'bg-emerald-50 text-emerald-700',
 };
 
+// --- Helpers de formatage ---
 function fmt(dateStr) {
   if (!dateStr) return '?';
   const d = new Date(dateStr);
   return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
 }
+
+const formatGenre = (g) => {
+  const map = { homme: 'Homme', femme: 'Femme', autre: 'Autre', nonSpecifie: 'Non spécifié' };
+  return map[g] || 'Non renseigné';
+};
+
+const formatBirthday = (d) => {
+  if (!d) return 'Non renseigné';
+  return new Date(d).toLocaleDateString('fr-FR');
+};
 
 // Renders a single preference row — always visible even when empty
 function PrefRow({ label, value, children }) {
@@ -124,6 +135,17 @@ export default function ProfileTab() {
               <div className="flex items-center gap-3 text-slate-600">
                 <Phone className="w-4 h-4 text-slate-400 shrink-0" />
                 <span>{user.telephone || 'Non renseigné'}</span>
+              </div>
+              {/* Ligne Date de Naissance ajoutée */}
+              <div className="flex items-center gap-3 text-slate-600">
+                <Cake className="w-4 h-4 text-slate-400 shrink-0" />
+                <span>{formatBirthday(user.dateNaissance)}</span>
+              </div>
+
+              {/* Ligne Genre ajoutée */}
+              <div className="flex items-center gap-3 text-slate-600">
+                <User className="w-4 h-4 text-slate-400 shrink-0" />
+                <span>{formatGenre(user.genre)}</span>
               </div>
               <div className="flex items-center gap-3 text-slate-600">
                 <MapPin className="w-4 h-4 text-slate-400 shrink-0" />

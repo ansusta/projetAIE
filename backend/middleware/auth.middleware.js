@@ -33,4 +33,15 @@ const authorize = (...roles) => {
   }
 }
 
-module.exports = { authenticate, authorize }
+const ownerOrAdmin = (req, res, next) => {
+  const paramId = req.params.idRecruteur || req.params.id
+  if (
+    req.user.role === 'admin' ||
+    req.user._id.toString() === paramId
+  ) {
+    return next()
+  }
+  return res.status(403).json({ error: 'Access denied' })
+}
+
+module.exports = { authenticate, authorize, ownerOrAdmin }

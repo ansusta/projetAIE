@@ -3,12 +3,17 @@ const OffreTravail = require('../models/OffreTravail')
 // POST /api/offres
 const creerOffre = async (req, res) => {
   try {
-    const { titre, description, localisation, typeContrat, salaireMin, salaireMax, requis } = req.body
+    const {
+      titre, description, localisation, typeContrat,
+      salaireMin, salaireMax, requis,
+      filtresPersonnels          // { ageMin?, ageMax?, genres?: [] }
+    } = req.body
 
     const offre = await OffreTravail.create({
       titre, description, localisation, typeContrat,
       salaireMin, salaireMax, requis,
-      idRecruteur: req.user._id
+      idRecruteur: req.user._id,
+      filtresPersonnels: filtresPersonnels || {}
     })
 
     res.status(201).json(offre)
@@ -23,10 +28,10 @@ const listerOffres = async (req, res) => {
     const { typeContrat, localisation, salaireMin, search, page = 1, limit = 10 } = req.query
 
     const filter = { statutOffre: 'ouvert' }
-    if (typeContrat)   filter.typeContrat  = typeContrat
-    if (localisation)  filter.localisation = { $regex: localisation, $options: 'i' }
-    if (salaireMin)    filter.salaireMin   = { $gte: Number(salaireMin) }
-    if (search)        filter.titre        = { $regex: search, $options: 'i' }
+    if (typeContrat)  filter.typeContrat  = typeContrat
+    if (localisation) filter.localisation = { $regex: localisation, $options: 'i' }
+    if (salaireMin)   filter.salaireMin   = { $gte: Number(salaireMin) }
+    if (search)       filter.titre        = { $regex: search, $options: 'i' }
 
     const total  = await OffreTravail.countDocuments(filter)
     const offres = await OffreTravail.find(filter)
@@ -72,8 +77,11 @@ const modifierOffre = async (req, res) => {
     if (offre.idRecruteur.toString() !== req.user._id.toString())
       return res.status(403).json({ error: 'Not your offer' })
 
-    const allowed = ['titre', 'description', 'localisation', 'typeContrat',
-                     'salaireMin', 'salaireMax', 'requis', 'statutOffre']
+    const allowed = [
+      'titre', 'description', 'localisation', 'typeContrat',
+      'salaireMin', 'salaireMax', 'requis', 'statutOffre',
+      'filtresPersonnels'
+    ]
     allowed.forEach(f => { if (req.body[f] !== undefined) offre[f] = req.body[f] })
 
     await offre.save()
