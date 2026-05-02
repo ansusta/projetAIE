@@ -1019,7 +1019,7 @@ export default function RecruiterDashboard() {
                     </td>
                     <td className="py-4 px-6">
                       <span className={`text-xs font-bold px-3 py-1 rounded-full ${o.statutOffre === 'ouvert' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                        {o.statutOffre === 'ouvert' ? 'Active' : 'Fermée'}
+                        {o.statutOffre === 'ouvert' ? 'Active' : 'Fermé'}
                       </span>
                     </td>
                   </tr>

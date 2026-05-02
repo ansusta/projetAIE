@@ -18,10 +18,21 @@ export default function NotificationsPage() {
 
   const unread = notifications.filter(n => !n.lu).length;
 
-  const handleMarkOne = async (id) => {
-    await notificationService.markAsRead(id).catch(() => {});
-    setNotifications(prev => prev.map(n => n._id === id ? { ...n, lu: true } : n));
-  };
+const handleMarkOne = async (notification) => {
+  if (!notification.lu) {
+    await notificationService.markAsRead(notification._id).catch(() => {});
+    setNotifications(prev =>
+      prev.map(n => n._id === notification._id ? { ...n, lu: true } : n)
+    );
+  }
+  // Navigate to the dashboard, candidatures tab, with the linked candidature
+  navigate('/dashboard', {
+    state: {
+      tab: 'candidatures',
+      candidatureId: notification.idCandidature,
+    },
+  });
+};
 
   const handleMarkAll = async () => {
     setMarkingAll(true);

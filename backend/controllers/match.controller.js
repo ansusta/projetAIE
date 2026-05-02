@@ -210,4 +210,43 @@ const applyWithMatch = async (req, res) => {
   }
 }
 
-module.exports = { getRecommandations, getScoreForOffre, applyWithMatch }
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/match/history
+// Returns all past AI matches for the candidate, sorted newest first.
+// Each entry includes the offer details, score, date, and whether the
+// candidate has already applied (so the frontend can show the right CTA).
+// ─────────────────────────────────────────────────────────────────────────────
+const getMatchHistory = async (req, res) => {
+  try {
+    const [matches, candidatures] = await Promise.all([
+      Match.find({ idCandidat: req.user._id })
+        .sort({ dateCalcul: -1 })
+        .populate({
+          path    : 'idOffre',
+          populate : { path: 'idRecruteur', select: 'nomEntreprise secteurActivite' }
+        }),
+      Candidature.find({ idCandidat: req.user._id }).select('idOffre')
+    ])
+
+    const appliedOffreIds = new Set(candidatures.map(c => c.idOffre.toString()))
+
+    const history = matches
+      // Drop entries whose offer was deleted
+      .filter(m => m.idOffre)
+      .map(m => ({
+        matchId    : m._id,
+        offre      : m.idOffre,
+        matchScore : Math.round(m.score * 100),
+        dateCalcul : m.dateCalcul,
+        applied    : appliedOffreIds.has(m.idOffre._id.toString()),
+        // Surface whether the offer is still open so the UI can disable the CTA
+        ouvert     : m.idOffre.statutOffre === 'ouvert'
+      }))
+
+    res.json({ history })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
+
+module.exports = { getRecommandations, getScoreForOffre, applyWithMatch, getMatchHistory }

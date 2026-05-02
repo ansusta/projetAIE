@@ -4,9 +4,9 @@ import {
   MapPin, Euro, Sparkles, Settings, LogOut,
   Loader2, RefreshCw, CheckCircle, XCircle, AlertCircle,
   Calendar, ChevronRight, X, ExternalLink, FileText,
-  CheckCheck, Users, Clock, Building,
+  CheckCheck, Users, Clock, Building, History,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation  } from 'react-router-dom';
 import { authService }        from '../services/auth.service';
 import { matchService }       from '../services/match.service';
 import { candidatureService } from '../services/candidature.service';
@@ -103,9 +103,24 @@ function ScoreRing({ score }) {
   );
 }
 
+// ── Small score pill (used in history list) ───────────────────────────────────
+function ScorePill({ score }) {
+  const color = score >= 80
+    ? 'bg-green-50 text-green-700 border-green-200'
+    : score >= 60
+    ? 'bg-amber-50 text-amber-700 border-amber-200'
+    : 'bg-red-50 text-red-600 border-red-200';
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs font-black px-2.5 py-1 rounded-full border ${color}`}>
+      <Sparkles className="w-3 h-3" />{score}%
+    </span>
+  );
+}
+
 // ── Offer detail panel ────────────────────────────────────────────────────────
 function OffreDetailPanel({ offre, onApply, applying, alreadyApplied }) {
   const navigate  = useNavigate();
+  const location = useLocation();
   const recruteur = offre.idRecruteur || {};
   return (
     <div className="p-5 sm:p-6 bg-slate-50/50 border-t border-slate-100 animate-fade-in-down rounded-b-2xl">
@@ -152,7 +167,7 @@ function OffreDetailPanel({ offre, onApply, applying, alreadyApplied }) {
                 <p className="text-xs text-slate-500">{recruteur.secteurActivite}</p>
               </div>
             </div>
-            <button onClick={() => navigate(`/recruteurs/${recruteur._id || 'unknown'}`)}
+            <button onClick={() => navigate(`/recruteur/${recruteur._id || 'unknown'}`)}
               className="w-full text-xs text-blue-600 font-semibold py-2 border border-blue-100 rounded-lg hover:bg-blue-50 transition-colors flex items-center justify-center gap-1 mb-4">
               Voir le profil <ExternalLink className="w-3 h-3" />
             </button>
@@ -243,7 +258,7 @@ function CandidatureDetailPanel({ candidature, onClose }) {
 }
 
 // ── Main dashboard ────────────────────────────────────────────────────────────
-export default function CandidateDashboard() {
+export default function CandidatDashboard() {
   const navigate  = useNavigate();
   const [activeTab, setActiveTab] = useState('home');
 
@@ -266,6 +281,14 @@ export default function CandidateDashboard() {
   const [matchApplying, setMatchApplying]   = useState(false);
   const [matchApplyMsg, setMatchApplyMsg]   = useState('');
   const [prefFilterOn, setPrefFilterOn]     = useState(false);
+
+  // Match history
+  const [matchHistory, setMatchHistory]         = useState([]);
+  const [historyLoading, setHistoryLoading]     = useState(false);
+  const [historyError, setHistoryError]         = useState('');
+  const [historyApplyingId, setHistoryApplyingId] = useState(null);
+  const [historyApplyMsgs, setHistoryApplyMsgs] = useState({}); // { offreId: msg }
+  const [expandedHistory, setExpandedHistory]   = useState(null);
 
   // Applications
   const [candidatures, setCandidatures]     = useState([]);
@@ -301,9 +324,22 @@ export default function CandidateDashboard() {
   useEffect(() => {
     if (activeTab === 'home' && offres.length === 0)                    loadOffres();
     if (activeTab === 'matches' && !matchData && !matchLoading)         loadMatch();
+    if (activeTab === 'history' && matchHistory.length === 0)           loadMatchHistory();
     if (activeTab === 'applications' && candidatures.length === 0)      loadCandidatures();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
+  useEffect(() => {
+  const state = location.state;
+  if (!state?.candidatureId || !candidatures.length) return;
+
+  setActiveTab('candidatures');           // switch to the candidatures tab
+  setExpandedCand(state.candidatureId);  // expand the matching card
+
+  // Clear the state so a refresh doesn't re-trigger it
+  window.history.replaceState({}, '');
+}, [candidatures, location.state]);
+
+
 
   const loadOffres = useCallback(async (q = '') => {
     setOffresLoading(true);
@@ -339,6 +375,17 @@ export default function CandidateDashboard() {
     } finally { setMatchLoading(false); }
   }, [currentUser, prefFilterOn]);
 
+  const loadMatchHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    setHistoryError('');
+    try {
+      const history = await matchService.getHistory();
+      setMatchHistory(history || []);
+    } catch (err) {
+      setHistoryError(err.response?.data?.error || 'Impossible de charger l\'historique.');
+    } finally { setHistoryLoading(false); }
+  }, []);
+
   const loadCandidatures = useCallback(async () => {
     setCandsLoading(true);
     try {
@@ -371,6 +418,28 @@ export default function CandidateDashboard() {
     } finally { setMatchApplying(false); }
   };
 
+  // Apply from history, then refresh the history entry in-place
+  const handleHistoryApply = async (offreId) => {
+    setHistoryApplyingId(offreId);
+    setHistoryApplyMsgs(prev => ({ ...prev, [offreId]: '' }));
+    try {
+      const res = await matchService.apply(offreId);
+      setHistoryApplyMsgs(prev => ({
+        ...prev,
+        [offreId]: `✅ Candidature envoyée ! Score IA : ${res.matchScore}%`,
+      }));
+      // Mark the entry as applied locally — no need to re-fetch the whole list
+      setMatchHistory(prev =>
+        prev.map(m => m.offre._id === offreId ? { ...m, applied: true } : m)
+      );
+    } catch (err) {
+      setHistoryApplyMsgs(prev => ({
+        ...prev,
+        [offreId]: `❌ ${err.response?.data?.error || 'Erreur lors de la candidature.'}`,
+      }));
+    } finally { setHistoryApplyingId(null); }
+  };
+
   const handleMarkAllRead = async () => {
     await notificationService.markAllAsRead().catch(() => {});
     setNotifications(prev => prev.map(n => ({ ...n, lu: true })));
@@ -391,6 +460,7 @@ export default function CandidateDashboard() {
   const navItems = [
     { id: 'home',         label: 'Offres',       icon: Home      },
     { id: 'matches',      label: 'Match IA',     icon: Target    },
+    { id: 'history',      label: 'Historique',   icon: History   },
     { id: 'applications', label: 'Candidatures', icon: Briefcase },
     { id: 'profile',      label: 'Mon Profil',   icon: User      },
   ];
@@ -584,6 +654,234 @@ export default function CandidateDashboard() {
             <button onClick={() => loadMatch(false)} className="text-blue-600 text-sm font-semibold hover:underline">
               Chercher sans filtres
             </button>
+          </div>
+        )}
+      </div>
+    );
+
+    // ── MATCH HISTORY ─────────────────────────────────────────────────────────
+    if (activeTab === 'history') return (
+      <div className="space-y-5">
+        <div className="flex justify-between items-end">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">Historique des matchs</h2>
+            <p className="text-slate-500 mt-1 text-sm">
+              Toutes les offres que l'IA vous a suggérées · postulez aux offres que vous avez manquées.
+            </p>
+          </div>
+          <button
+            onClick={loadMatchHistory}
+            disabled={historyLoading}
+            className="flex items-center gap-2 text-sm text-slate-600 hover:text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg font-semibold disabled:opacity-50 transition-colors">
+            <RefreshCw className={`w-4 h-4 ${historyLoading ? 'animate-spin' : ''}`} />
+            Actualiser
+          </button>
+        </div>
+
+        {historyLoading ? (
+          <div className="flex flex-col items-center justify-center h-64 gap-4 bg-white rounded-2xl border border-slate-100">
+            <Loader2 className="w-10 h-10 text-blue-400 animate-spin" />
+            <p className="text-slate-500">Chargement de l'historique…</p>
+          </div>
+
+        ) : historyError ? (
+          <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center space-y-3">
+            <p className="text-slate-500">{historyError}</p>
+            <button onClick={loadMatchHistory} className="text-blue-600 text-sm font-medium underline">Réessayer</button>
+          </div>
+
+        ) : matchHistory.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-dashed border-slate-200 h-56 flex flex-col items-center justify-center text-slate-400 gap-3">
+            <History className="w-10 h-10 text-slate-300" />
+            <p className="font-medium">Aucun match IA pour l'instant.</p>
+            <button
+              onClick={() => setActiveTab('matches')}
+              className="bg-blue-600 text-white px-5 py-2 rounded-xl font-semibold text-sm hover:bg-blue-700 transition-colors">
+              Lancer un match IA
+            </button>
+          </div>
+
+        ) : (
+          <div className="space-y-3">
+            {matchHistory.map((item) => {
+              const offre     = item.offre || {};
+              const rec       = offre.idRecruteur || {};
+              const isExpanded = expandedHistory === item.matchId;
+              const applyMsg  = historyApplyMsgs[offre._id];
+              const isApplying = historyApplyingId === offre._id;
+
+              return (
+                <div
+                  key={item.matchId}
+                  className={`bg-white rounded-2xl border transition-all ${
+                    isExpanded
+                      ? 'border-blue-200 shadow-md ring-1 ring-blue-50'
+                      : 'border-slate-200 shadow-sm hover:border-slate-300'
+                  }`}>
+
+                  {/* ── Row header ── */}
+                  <div
+                    className="p-5 cursor-pointer"
+                    onClick={() => setExpandedHistory(isExpanded ? null : item.matchId)}>
+                    <div className="flex items-start gap-4">
+
+                      {/* Company initial */}
+                      <div className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center text-base font-bold text-slate-400 shrink-0">
+                        {rec.nomEntreprise?.[0] || offre.titre?.[0] || '?'}
+                      </div>
+
+                      {/* Title + meta */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-slate-900 truncate">{offre.titre || 'Offre'}</h3>
+                        <p className="text-sm text-slate-500 truncate">
+                          {rec.nomEntreprise || 'Entreprise'}
+                          {offre.localisation ? ` · ${offre.localisation}` : ''}
+                        </p>
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          <ScorePill score={item.matchScore} />
+                          {offre.typeContrat && (
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg border ${CONTRACT_COLOR[offre.typeContrat] || 'bg-slate-50 text-slate-500 border-slate-100'}`}>
+                              {offre.typeContrat}
+                            </span>
+                          )}
+                          {!item.ouvert && (
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-lg border bg-slate-50 text-slate-400 border-slate-100">
+                              Offre fermée
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-400 mt-1.5">
+                          Suggéré le {new Date(item.dateCalcul).toLocaleDateString('fr-FR', {
+                            day: 'numeric', month: 'long', year: 'numeric',
+                          })}
+                        </p>
+                      </div>
+
+                      {/* Status badge + chevron */}
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        {item.applied ? (
+                          <span className="flex items-center gap-1 text-xs text-green-600 font-semibold bg-green-50 px-3 py-1.5 rounded-xl border border-green-100">
+                            <CheckCircle className="w-3.5 h-3.5" /> Postulé
+                          </span>
+                        ) : item.ouvert ? (
+                          <span className="flex items-center gap-1 text-xs text-amber-600 font-semibold bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-100">
+                            <Clock className="w-3.5 h-3.5" /> Non postulé
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-xs text-slate-400 font-semibold bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
+                            Fermée
+                          </span>
+                        )}
+                        <ChevronRight className={`w-4 h-4 text-slate-300 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Expanded detail ── */}
+                  {isExpanded && (
+                    <div className="px-5 pb-5 space-y-4 border-t border-slate-100 pt-4">
+
+                      {/* Description */}
+                      {offre.description && (
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Description</h4>
+                          <p className="text-sm text-slate-700 leading-relaxed line-clamp-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            {offre.description}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Requirements */}
+                      {offre.requis?.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Prérequis</h4>
+                          <div className="flex flex-wrap gap-1.5">
+                            {offre.requis.map((r, i) => (
+                              <span key={i} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg border border-blue-100">
+                                {r}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Salary */}
+                      {(offre.salaireMin || offre.salaireMax) && (
+                        <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 px-4 py-2.5 rounded-xl border border-emerald-100">
+                          <Euro className="w-4 h-4 shrink-0" />
+                          {offre.salaireMin && offre.salaireMax
+                            ? `${offre.salaireMin.toLocaleString()} – ${offre.salaireMax.toLocaleString()} DZD`
+                            : offre.salaireMin
+                            ? `Dès ${offre.salaireMin.toLocaleString()} DZD`
+                            : `Jusqu'à ${offre.salaireMax.toLocaleString()} DZD`}
+                        </div>
+                      )}
+
+                      {/* Recruiter row + profile link */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-500">
+                            {(rec.nomEntreprise || offre.titre || '?')[0]}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-slate-800">{rec.nomEntreprise || 'Entreprise'}</p>
+                            {rec.secteurActivite && <p className="text-xs text-slate-500">{rec.secteurActivite}</p>}
+                          </div>
+                        </div>
+                        {rec._id && (
+                          <button
+                            onClick={() => navigate(`/recruteur/${rec._id}`)}
+                            className="flex items-center gap-1.5 text-xs text-blue-600 font-semibold hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 transition-colors">
+                            <Building className="w-3.5 h-3.5" /> Voir le recruteur
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Apply message */}
+                      {applyMsg && (
+                        <div className={`p-3 rounded-xl text-sm font-medium border ${
+                          applyMsg.startsWith('✅')
+                            ? 'bg-green-50 text-green-700 border-green-200'
+                            : 'bg-red-50 text-red-600 border-red-200'
+                        }`}>
+                          {applyMsg}
+                        </div>
+                      )}
+
+                      {/* CTA */}
+                      {!item.applied && item.ouvert && (
+                        <button
+                          onClick={() => handleHistoryApply(offre._id)}
+                          disabled={isApplying}
+                          className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 shadow-sm shadow-blue-100 disabled:opacity-60 transition-all">
+                          {isApplying
+                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Candidature en cours…</>
+                            : <><Sparkles className="w-4 h-4" /> Postuler à cette offre</>}
+                        </button>
+                      )}
+
+                      {item.applied && (
+                        <div className="flex items-center justify-center gap-2 py-3 bg-green-50 text-green-700 rounded-xl font-semibold text-sm border border-green-100">
+                          <CheckCircle className="w-5 h-5" /> Vous avez déjà postulé à cette offre
+                        </div>
+                      )}
+
+                      {!item.ouvert && (
+                        <div className="flex items-center justify-center gap-2 py-3 bg-slate-50 text-slate-400 rounded-xl font-semibold text-sm border border-slate-100">
+                          <XCircle className="w-5 h-5" /> Cette offre est maintenant fermée
+                        </div>
+                      )}
+
+                      <button
+                        onClick={() => setExpandedHistory(null)}
+                        className="text-xs text-slate-400 hover:text-slate-600 font-medium flex items-center gap-1">
+                        <X className="w-3.5 h-3.5" /> Réduire
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

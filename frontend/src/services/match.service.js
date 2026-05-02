@@ -7,6 +7,13 @@ export const matchService = {
     return response.data; // { match: { offre, matchScore } } | { match: null }
   },
 
+  // Returns all past matches sorted newest first
+  // Each item: { matchId, offre, matchScore, dateCalcul, applied, ouvert }
+  getHistory: async () => {
+    const response = await api.get('/api/match/history');
+    return response.data.history; // MatchHistoryItem[]
+  },
+
   getScore: async (offreId) => {
     const response = await api.get(`/api/match/score/${offreId}`);
     return response.data; // { matchScore, offreId, updatedAt }
