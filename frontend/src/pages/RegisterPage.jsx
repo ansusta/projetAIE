@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
-import { User, Briefcase, Eye, EyeOff, ChevronLeft, Building, Sparkles, CheckCircle, MapPin, Phone, Calendar } from 'lucide-react';
+import { User, Briefcase, Eye, EyeOff, ChevronLeft, Building, Sparkles, CheckCircle, MapPin, Phone, Calendar, Loader2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Loader2 } from 'lucide-react'; 
 import { authService } from '../services/auth.service';
 
 export default function RegisterPage() {
-  const location    = useLocation();
+  const location = useLocation();
   const initialRole = location.state?.role || null;
 
-  const [step,         setStep]         = useState(initialRole ? 1 : 0);
-  const [role,         setRole]         = useState(initialRole);
+  const [step, setStep] = useState(initialRole ? 1 : 0);
+  const [role, setRole] = useState(initialRole);
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading,    setIsLoading]    = useState(false);
-  const [error,        setError]        = useState('');
-  
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
   const [formData, setFormData] = useState({
+
     email: '', password: '', phone: '',
     streetNumber: '', streetName: '', addressComplement: '',
     zipCode: '', city: '', region: '', country: 'Algérie',
@@ -29,8 +29,16 @@ export default function RegisterPage() {
 
   const navigate = useNavigate();
 
-  const handleNext = () => { setError(''); setStep(p => p + 1); };
-  const handleBack = () => { setError(''); setStep(p => p - 1); };
+  const handleNext = (e) => { 
+    if (e) e.preventDefault();
+    setError(''); 
+    setStep(p => p + 1); 
+  };
+  
+  const handleBack = () => { 
+    setError(''); 
+    setStep(p => p - 1); 
+  };
 
   const handleRegister = async (e) => {
     if (e) e.preventDefault(); 
@@ -38,16 +46,12 @@ export default function RegisterPage() {
     setError('');
     try {
       if (role === 'candidate') {
-        const response = await authService.registerCandidate(formData);
-        // Save role for persistent session (adjust depending on your backend response)
+        await authService.registerCandidate(formData);
         localStorage.setItem('userRole', 'candidate'); 
         navigate('/onboarding');
       } else {
-        const response = await authService.registerRecruiter(formData);
-        // Save role for persistent session
+        await authService.registerRecruiter(formData);
         localStorage.setItem('userRole', 'recruiter'); 
-        
-        // FIXED: Navigate to the correct recruiter dashboard!
         navigate('/recruiter-dashboard'); 
       }
     } catch (err) {
@@ -56,11 +60,12 @@ export default function RegisterPage() {
       setIsLoading(false);
     }
   };
-  
+
+  const inp = (focus = 'blue') => `w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-${focus}-600 outline-none text-slate-700 bg-white transition-all`;
+
   // ── Step 0: Role selection ────────────────────────────────────────────────
   const renderRoleSelection = () => (
     <div className="flex flex-col items-center animate-fade-in w-full max-w-4xl">
-      {/* Back to home */}
       <button
         onClick={() => navigate('/')}
         className="self-start mb-8 flex items-center gap-2 text-slate-500 hover:text-slate-800 font-medium transition-colors"
@@ -100,23 +105,21 @@ export default function RegisterPage() {
     </div>
   );
 
-  const inp = (focus = 'blue') => `w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-${focus}-600 outline-none text-slate-700 bg-white`;
-
   // ── Candidate steps ───────────────────────────────────────────────────────
   const renderCandidateStep1 = () => (
-    <div className="bg-white p-10 rounded-3xl shadow-2xl shadow-blue-900/10 w-full max-w-xl animate-fade-in">
+    <form onSubmit={handleNext} className="bg-white p-10 rounded-3xl shadow-2xl shadow-blue-900/10 w-full max-w-xl animate-fade-in">
       <h2 className="text-3xl font-bold text-slate-900 mb-2">Créez votre compte</h2>
       <p className="text-slate-500 mb-8">Commençons par vos informations de connexion</p>
       <div className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">Adresse email</label>
-          <input type="email" placeholder="exemple@email.com" className={inp()}
+          <input required type="email" placeholder="exemple@email.com" className={inp()}
             value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">Mot de passe</label>
           <div className="relative">
-            <input type={showPassword ? 'text' : 'password'} placeholder="••••••••" className={`${inp()} pr-12`}
+            <input required type={showPassword ? 'text' : 'password'} placeholder="••••••••" className={`${inp()} pr-12`}
               value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
             <button onClick={() => setShowPassword(!showPassword)} type="button"
               className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
@@ -128,24 +131,24 @@ export default function RegisterPage() {
           <label className="block text-sm font-medium text-slate-700 mb-2">Téléphone</label>
           <div className="relative">
             <Phone className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-            <input type="tel" placeholder="06 12 34 56 78" className={`${inp()} pl-12`}
+            <input required type="tel" placeholder="06 12 34 56 78" className={`${inp()} pl-12`}
               value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
           </div>
         </div>
       </div>
       <div className="flex items-center justify-between mt-10">
-        <button onClick={handleBack} className="flex items-center text-slate-500 hover:text-slate-800 font-medium">
+        <button type="button" onClick={handleBack} className="flex items-center text-slate-500 hover:text-slate-800 font-medium">
           <ChevronLeft className="w-5 h-5 mr-1" /> Retour
         </button>
-        <button onClick={handleNext} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-semibold w-1/2">
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-semibold w-1/2">
           Continuer
         </button>
       </div>
-    </div>
+    </form>
   );
 
   const renderCandidateStep2 = () => (
-    <div className="bg-white p-10 rounded-3xl shadow-2xl shadow-blue-900/10 w-full max-w-xl animate-fade-in">
+    <form onSubmit={handleRegister} className="bg-white p-10 rounded-3xl shadow-2xl shadow-blue-900/10 w-full max-w-xl animate-fade-in">
       <h2 className="text-3xl font-bold text-slate-900 mb-2">Vos informations</h2>
       <p className="text-slate-500 mb-6">Parlez-nous un peu de vous</p>
       {error && <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm rounded-r-lg">{error}</div>}
@@ -153,12 +156,12 @@ export default function RegisterPage() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Prénom</label>
-            <input type="text" placeholder="Jean" className={inp()}
+            <input required type="text" placeholder="Jean" className={inp()}
               value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Nom</label>
-            <input type="text" placeholder="Dupont" className={inp()}
+            <input required type="text" placeholder="Dupont" className={inp()}
               value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} />
           </div>
         </div>
@@ -166,7 +169,7 @@ export default function RegisterPage() {
           <label className="block text-sm font-medium text-slate-700 mb-2">Date de naissance</label>
           <div className="relative">
             <Calendar className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-            <input type="date" className={`${inp()} pl-12`}
+            <input required type="date" className={`${inp()} pl-12`}
               value={formData.birthDate} onChange={e => setFormData({...formData, birthDate: e.target.value})} />
           </div>
         </div>
@@ -224,32 +227,32 @@ export default function RegisterPage() {
         </div>
       </div>
       <div className="flex items-center justify-between mt-10">
-        <button onClick={handleBack} className="flex items-center text-slate-500 hover:text-slate-800 font-medium">
+        <button type="button" onClick={handleBack} className="flex items-center text-slate-500 hover:text-slate-800 font-medium">
           <ChevronLeft className="w-5 h-5 mr-1" /> Retour
         </button>
-        <button onClick={handleRegister} disabled={isLoading}
+        <button type="submit" disabled={isLoading}
           className={`flex items-center justify-center gap-2 px-8 py-3 rounded-xl font-semibold w-1/2 ${isLoading ? 'bg-blue-400 cursor-not-allowed text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}>
           {isLoading ? <><Loader2 className="w-5 h-5 animate-spin" /> Création…</> : 'Créer mon compte'}
         </button>
       </div>
-    </div>
+    </form>
   );
 
   // ── Recruiter steps ───────────────────────────────────────────────────────
   const renderRecruiterStep1 = () => (
-    <div className="bg-white p-10 rounded-3xl shadow-2xl shadow-blue-900/10 w-full max-w-xl animate-fade-in">
+    <form onSubmit={handleNext} className="bg-white p-10 rounded-3xl shadow-2xl shadow-blue-900/10 w-full max-w-xl animate-fade-in">
       <h2 className="text-3xl font-bold text-slate-900 mb-2">Compte Recruteur</h2>
       <p className="text-slate-500 mb-8">Commençons par vos informations de connexion</p>
       <div className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">Adresse email</label>
-          <input type="email" placeholder="rh@entreprise.com" className={inp('indigo')}
+          <input required type="email" placeholder="rh@entreprise.com" className={inp('indigo')}
             value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">Mot de passe</label>
           <div className="relative">
-            <input type={showPassword ? 'text' : 'password'} placeholder="••••••••"
+            <input required type={showPassword ? 'text' : 'password'} placeholder="••••••••"
               className={`${inp('indigo')} pr-12`}
               value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
             <button onClick={() => setShowPassword(!showPassword)} type="button"
@@ -262,24 +265,24 @@ export default function RegisterPage() {
           <label className="block text-sm font-medium text-slate-700 mb-2">Téléphone professionnel</label>
           <div className="relative">
             <Phone className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-            <input type="tel" placeholder="01 23 45 67 89" className={`${inp('indigo')} pl-12`}
+            <input required type="tel" placeholder="01 23 45 67 89" className={`${inp('indigo')} pl-12`}
               value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
           </div>
         </div>
       </div>
       <div className="flex items-center justify-between mt-10">
-        <button onClick={handleBack} className="flex items-center text-slate-500 hover:text-slate-800 font-medium">
+        <button type="button" onClick={handleBack} className="flex items-center text-slate-500 hover:text-slate-800 font-medium">
           <ChevronLeft className="w-5 h-5 mr-1" /> Retour
         </button>
-        <button onClick={handleNext} className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-semibold w-1/2">
+        <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-semibold w-1/2">
           Continuer
         </button>
       </div>
-    </div>
+    </form>
   );
 
   const renderRecruiterStep2 = () => (
-    <div className="bg-white p-10 rounded-3xl shadow-2xl shadow-blue-900/10 w-full max-w-xl animate-fade-in">
+    <form onSubmit={handleNext} className="bg-white p-10 rounded-3xl shadow-2xl shadow-blue-900/10 w-full max-w-xl animate-fade-in">
       <div className="flex items-center gap-3 mb-2">
         <Building className="w-8 h-8 text-indigo-600" />
         <h2 className="text-3xl font-bold text-slate-900">Informations entreprise</h2>
@@ -289,12 +292,12 @@ export default function RegisterPage() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Nom de l'entreprise</label>
-            <input type="text" placeholder="Ex: TechCorp" className={inp('indigo')}
+            <input required type="text" placeholder="Ex: TechCorp" className={inp('indigo')}
               value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})} />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Secteur d'activité</label>
-            <select className={`${inp('indigo')} bg-white`}
+            <select required className={`${inp('indigo')} bg-white`}
               value={formData.industry} onChange={e => setFormData({...formData, industry: e.target.value})}>
               <option value="">Sélectionnez</option>
               <option>Informatique / Digital</option>
@@ -340,18 +343,18 @@ export default function RegisterPage() {
         </div>
       </div>
       <div className="flex items-center justify-between mt-8">
-        <button onClick={handleBack} className="flex items-center text-slate-500 hover:text-slate-800 font-medium">
+        <button type="button" onClick={handleBack} className="flex items-center text-slate-500 hover:text-slate-800 font-medium">
           <ChevronLeft className="w-5 h-5 mr-1" /> Retour
         </button>
-        <button onClick={handleNext} className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-semibold w-1/2">
+        <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-semibold w-1/2">
           Continuer
         </button>
       </div>
-    </div>
+    </form>
   );
 
   const renderRecruiterStep3 = () => (
-    <div className="bg-white p-10 rounded-3xl shadow-2xl shadow-blue-900/10 w-full max-w-xl animate-fade-in">
+    <form onSubmit={handleRegister} className="bg-white p-10 rounded-3xl shadow-2xl shadow-blue-900/10 w-full max-w-xl animate-fade-in">
       <div className="flex items-center gap-3 mb-2">
         <Sparkles className="w-8 h-8 text-indigo-600" />
         <h2 className="text-3xl font-bold text-slate-900">Documents entreprise</h2>
@@ -364,17 +367,17 @@ export default function RegisterPage() {
         <p className="text-sm text-slate-500">KBIS, certificat d'immatriculation, etc.</p>
       </div>
       <div className="flex items-center justify-between mt-10">
-        <button onClick={handleBack} className="flex items-center text-slate-500 hover:text-slate-800 font-medium">
+        <button type="button" onClick={handleBack} className="flex items-center text-slate-500 hover:text-slate-800 font-medium">
           <ChevronLeft className="w-5 h-5 mr-1" /> Retour
         </button>
-        <button onClick={handleRegister} disabled={isLoading}
+        <button type="submit" disabled={isLoading}
           className={`flex items-center justify-center gap-2 px-8 py-3 rounded-xl font-semibold w-1/2 ${isLoading ? 'bg-indigo-400 cursor-not-allowed text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}>
           {isLoading
             ? <><Loader2 className="w-5 h-5 animate-spin" /> Vérification…</>
             : <><CheckCircle className="w-5 h-5" /> Terminer</>}
         </button>
       </div>
-    </div>
+    </form>
   );
 
   return (

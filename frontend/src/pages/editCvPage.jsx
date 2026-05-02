@@ -27,10 +27,11 @@ export default function EditCVPage() {
   const [formations,   setFormations]   = useState([]);
   const [langues,      setLangues]      = useState([]);
 
-  // ── Load existing CV ──────────────────────────────────────────────────────
+  // Load existing CV
   useEffect(() => {
     cvService.getMyCV()
       .then(cv => {
+        if (!cv) return;
         setTitrePoste(cv.titrePoste || '');
         setCompetences((cv.competences || []).join(', '));
         setLoisirsText((cv.loisirs    || []).join(', '));
@@ -42,7 +43,7 @@ export default function EditCVPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // ── Generic list helpers ──────────────────────────────────────────────────
+  // Generic list helpers
   const addExp = () => setExperiences(prev => [...prev, {
     id: Date.now(), poste: '', entreprise: '', localisation: '',
     dateDebut: '', dateFin: '', enCours: false, description: '',
@@ -64,13 +65,17 @@ export default function EditCVPage() {
   const updateLang = (id, k, v) => setLangues(prev =>
     prev.map(x => x.id === id ? { ...x, [k]: v } : x));
 
-  // ── Save ──────────────────────────────────────────────────────────────────
+  // Save
   const handleSave = async () => {
     setSaving(true);
     setError('');
     setSuccess('');
     try {
-      const strip = arr => arr.map(({ id, ...rest }) => rest);
+      const strip = arr => arr.map(item => {
+  const copy = { ...item };
+  delete copy.id;
+  return copy;
+});
       await cvService.update({
         titrePoste,
         competences:  competences.split(',').map(s => s.trim()).filter(Boolean),
@@ -129,7 +134,7 @@ export default function EditCVPage() {
           <label className="block text-sm font-bold text-slate-700 mb-2">
             Titre du poste recherché
           </label>
-          <input type="text" className={inp} value={titrePoste}
+          <input type="text" className={inp} value={titrePoste || ''}
             placeholder="ex: Développeur Fullstack React / Node.js"
             onChange={e => setTitrePoste(e.target.value)} />
         </div>
@@ -139,7 +144,7 @@ export default function EditCVPage() {
           <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
             <Code2 className="w-5 h-5 text-blue-600" /> Compétences
           </h3>
-          <input type="text" className={inp} value={competences}
+          <input type="text" className={inp} value={competences || ''}
             placeholder="ex: React, Node.js, Python, MongoDB…"
             onChange={e => setCompetences(e.target.value)} />
           <p className="text-xs text-slate-400 mt-1.5">Séparez par des virgules</p>
@@ -168,15 +173,15 @@ export default function EditCVPage() {
                   <Trash2 className="w-4 h-4" />
                 </button>
                 <div className="grid grid-cols-2 gap-3">
-                  <input type="text" placeholder="Intitulé du poste *" value={exp.poste}
+                  <input type="text" placeholder="Intitulé du poste *" value={exp.poste || ''}
                     className={small}
                     onChange={e => updateExp(exp.id, 'poste', e.target.value)} />
-                  <input type="text" placeholder="Entreprise *" value={exp.entreprise}
+                  <input type="text" placeholder="Entreprise *" value={exp.entreprise || ''}
                     className={small}
                     onChange={e => updateExp(exp.id, 'entreprise', e.target.value)} />
                 </div>
                 <div className="grid grid-cols-3 gap-3">
-                  <input type="text" placeholder="Localisation" value={exp.localisation}
+                  <input type="text" placeholder="Localisation" value={exp.localisation || ''}
                     className={small}
                     onChange={e => updateExp(exp.id, 'localisation', e.target.value)} />
                   <input type="month" placeholder="Début" value={exp.dateDebut?.slice(0, 7) || ''}
@@ -187,11 +192,11 @@ export default function EditCVPage() {
                     onChange={e => updateExp(exp.id, 'dateFin', e.target.value)} />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-                  <input type="checkbox" checked={exp.enCours} className="accent-blue-600"
+                  <input type="checkbox" checked={exp.enCours || false} className="accent-blue-600"
                     onChange={e => updateExp(exp.id, 'enCours', e.target.checked)} />
                   Poste actuel
                 </label>
-                <textarea rows={2} placeholder="Description des missions…" value={exp.description}
+                <textarea rows={2} placeholder="Description des missions…" value={exp.description || ''}
                   className={small}
                   onChange={e => updateExp(exp.id, 'description', e.target.value)} />
               </div>
@@ -222,14 +227,14 @@ export default function EditCVPage() {
                   <Trash2 className="w-4 h-4" />
                 </button>
                 <div className="grid grid-cols-2 gap-3">
-                  <input type="text" placeholder="Diplôme *" value={fm.diplome}
+                  <input type="text" placeholder="Diplôme *" value={fm.diplome || ''}
                     className={small}
                     onChange={e => updateFm(fm.id, 'diplome', e.target.value)} />
-                  <input type="text" placeholder="Établissement *" value={fm.etablissement}
+                  <input type="text" placeholder="Établissement *" value={fm.etablissement || ''}
                     className={small}
                     onChange={e => updateFm(fm.id, 'etablissement', e.target.value)} />
                 </div>
-                <input type="text" placeholder="Domaine d'études" value={fm.domaine}
+                <input type="text" placeholder="Domaine d'études" value={fm.domaine || ''}
                   className={small}
                   onChange={e => updateFm(fm.id, 'domaine', e.target.value)} />
                 <div className="grid grid-cols-3 gap-3 items-center">
@@ -240,7 +245,7 @@ export default function EditCVPage() {
                     disabled={fm.enCours} className={`${small} disabled:opacity-40`}
                     onChange={e => updateFm(fm.id, 'dateFin', e.target.value)} />
                   <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-                    <input type="checkbox" checked={fm.enCours} className="accent-indigo-600"
+                    <input type="checkbox" checked={fm.enCours || false} className="accent-indigo-600"
                       onChange={e => updateFm(fm.id, 'enCours', e.target.checked)} />
                     En cours
                   </label>
@@ -267,10 +272,10 @@ export default function EditCVPage() {
             )}
             {langues.map(l => (
               <div key={l.id} className="flex gap-3 items-center">
-                <input type="text" placeholder="Langue (ex: Anglais)" value={l.langue}
+                <input type="text" placeholder="Langue (ex: Anglais)" value={l.langue || ''}
                   className={`${small} flex-1`}
                   onChange={e => updateLang(l.id, 'langue', e.target.value)} />
-                <select value={l.niveau} className={`${small} flex-1`}
+                <select value={l.niveau || 'intermédiaire'} className={`${small} flex-1`}
                   onChange={e => updateLang(l.id, 'niveau', e.target.value)}>
                   {niveauOptions.map(n => (
                     <option key={n} value={n}>{n.charAt(0).toUpperCase() + n.slice(1)}</option>
@@ -290,7 +295,7 @@ export default function EditCVPage() {
           <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
             <Heart className="w-5 h-5 text-orange-500" /> Centres d'intérêt
           </h3>
-          <input type="text" className={inp} value={loisirsText}
+          <input type="text" className={inp} value={loisirsText || ''}
             placeholder="ex: Open source, Escalade, Photographie"
             onChange={e => setLoisirsText(e.target.value)} />
           <p className="text-xs text-slate-400 mt-1.5">Séparez par des virgules (optionnel)</p>

@@ -28,7 +28,7 @@ export default function OnboardingCV() {
     // Step 2 — experiences  (maps 1-to-1 with backend experienceSchema)
     experiences: [
       {
-        id: Date.now(),
+        id: 'temp-exp-1',
         poste: '',
         entreprise: '',
         localisation: '',
@@ -42,7 +42,7 @@ export default function OnboardingCV() {
     // Step 3 — formations  (maps 1-to-1 with backend formationSchema)
     formations: [
       {
-        id: Date.now(),
+        id: 'emp-form-1',
         diplome: '',
         etablissement: '',
         domaine: '',
@@ -55,7 +55,14 @@ export default function OnboardingCV() {
 
     // Step 4 — competences (array) + langues + loisirs
     competencesText: '', // comma-separated → split on submit
-    langues: [{ id: Date.now(), langue: '', niveau: 'intermédiaire' }],
+    langues: [
+      { 
+        id: 'temp-lang-1', 
+        langue: '', 
+        niveau: 
+        'intermédiaire' 
+      }
+    ],
     loisirsText: '',     // comma-separated → split on submit
   });
 
@@ -98,7 +105,11 @@ export default function OnboardingCV() {
     setError('');
     try {
       // Strip the helper `id` field (only needed by React keys)
-      const stripId = (arr) => arr.map(({ id, ...rest }) => rest);
+      const stripId = (arr) => arr.map(item => {
+     const copy = { ...item };
+    delete copy.id;
+    return copy;
+    });
 
       const cvPayload = {
         titrePoste: formData.titrePoste,

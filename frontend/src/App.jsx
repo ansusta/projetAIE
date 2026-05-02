@@ -10,6 +10,7 @@ import EditCVPage             from './pages/EditCVPage';
 import NotificationsPage      from './pages/NotificationsPage';
 import RecruteurProfilePage   from './pages/RecruteurProfilePage';
 import RecruiterDashboard from './pages/RecruiterDashboard';
+import AdminDashboard from './pages/AdminDashboard';
 import PublicProfile from './pages/PublicProfile';
 import VerificationPage from './pages/unverifiedRecruteur'
 
@@ -28,8 +29,10 @@ function App() {
         <Route path="/notifications"  element={<NotificationsPage />} />
         <Route path="/recruteur/:id"  element={<RecruteurProfilePage />} />
         <Route path="/recruiter-dashboard" element={<RecruiterDashboard />} />
+        <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/unverifiedRecruteur" element={<VerificationPage />} />
         <Route path="/user/:id" element={<PublicProfile />} />
+
       </Routes>
     </BrowserRouter>
   );
