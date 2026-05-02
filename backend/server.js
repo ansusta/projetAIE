@@ -6,6 +6,8 @@ require('./models/Notification')
 require('./models/Document')
 require('./models/Match')
 require('./models/CV')  
+require('./models/commentaire')   
+require('./models/signalement')  
 const documentRoutes = require('./routes/document.routes')
 const express = require("express");
 const cors = require("cors");
@@ -19,8 +21,11 @@ const adminRoutes = require('./routes/admin.routes')
 const notificationRoutes = require('./routes/notification.routes')
 const matchRoutes = require ('./routes/match.routes');
 const cvRoutes           = require('./routes/cv.routes')  
+const commentaireRoutes  = require('./routes/commentaire.routes') 
+const signalementRoutes  = require('./routes/signalement.routes') 
 const app = express();
 const scheduleInterviewReminders = require('./services/reminderCron');
+
 
 app.use(cors());
 app.use(express.json());
@@ -71,10 +76,12 @@ app.use('/api/offres', offreRoutes);
 app.use('/api/candidature', candidatureRoutes);
 app.use('/api/candidatures', candidatureRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/notification', notificationRoutes)
-app.use('/api/notifications', notificationRoutes)
+app.use('/api/notification', notificationRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/api/match', matchRoutes);
-app.use('/api/cv',           cvRoutes)     
+app.use('/api/cv',           cvRoutes);
+app.use('/api/commentaires',  commentaireRoutes);
+app.use('/api/signalements',  signalementRoutes);
 
 
 scheduleInterviewReminders();

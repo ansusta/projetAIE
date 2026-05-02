@@ -96,7 +96,7 @@ const handleMarkOne = async (notification) => {
             {notifications.map(n => (
               <div
                 key={n._id}
-                onClick={() => !n.lu && handleMarkOne(n._id)}
+                onClick={() => handleMarkOne(n)}
                 className={`flex items-start gap-4 p-5 transition-colors ${
                   !n.lu
                     ? 'bg-blue-50/40 hover:bg-blue-50 cursor-pointer'
