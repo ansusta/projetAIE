@@ -18,6 +18,42 @@ const CONTRACT_COLOR = {
   freelance: 'bg-purple-50 text-purple-700 border-purple-100',
 };
 
+
+const inp = 'w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-600 focus:outline-none text-slate-700 bg-white transition-shadow';
+
+const PasswordField = ({ label, value, show, onToggle, onChange, hint, expectedMatch }) => (
+  <div>
+    <label className="block text-sm font-medium text-slate-700 mb-2">{label}</label>
+    <div className="relative">
+      <input
+        type={show ? 'text' : 'password'}
+        placeholder="••••••••"
+        className={`${inp} pr-12 ${
+          label.includes('Confirmer') && value
+            ? value === expectedMatch
+              ? 'border-green-400 focus:ring-green-400'
+              : 'border-red-400 focus:ring-red-400'
+            : ''
+        }`}
+        value={value}
+        onChange={onChange}
+      />
+      <button type="button" onClick={onToggle}
+        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+        {show ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+      </button>
+    </div>
+    {hint && <p className="text-xs text-slate-400 mt-1">{hint}</p>}
+    {label.includes('Confirmer') && value && (
+      <p className={`text-xs mt-1 ${value === expectedMatch ? 'text-green-600' : 'text-red-500'}`}>
+        {value === expectedMatch
+          ? '✓ Les mots de passe correspondent'
+          : 'Les mots de passe ne correspondent pas'}
+      </p>
+    )}
+  </div>
+);
+
 export default function EditProfilePage() {
   const navigate     = useNavigate();
   const fileInputRef = useRef(null);
@@ -188,40 +224,6 @@ export default function EditProfilePage() {
     }
   };
 
-  const inp = 'w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-600 focus:outline-none text-slate-700 bg-white transition-shadow';
-
-  const PasswordField = ({ label, value, show, onToggle, onChange, hint }) => (
-    <div>
-      <label className="block text-sm font-medium text-slate-700 mb-2">{label}</label>
-      <div className="relative">
-        <input
-          type={show ? 'text' : 'password'}
-          placeholder="••••••••"
-          className={`${inp} pr-12 ${
-            label.includes('Confirmer') && value
-              ? value === passwordData.nouveauMotDePasse
-                ? 'border-green-400 focus:ring-green-400'
-                : 'border-red-400 focus:ring-red-400'
-              : ''
-          }`}
-          value={value}
-          onChange={onChange}
-        />
-        <button type="button" onClick={onToggle}
-          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-          {show ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-        </button>
-      </div>
-      {hint && <p className="text-xs text-slate-400 mt-1">{hint}</p>}
-      {label.includes('Confirmer') && value && (
-        <p className={`text-xs mt-1 ${value === passwordData.nouveauMotDePasse ? 'text-green-600' : 'text-red-500'}`}>
-          {value === passwordData.nouveauMotDePasse
-            ? '✓ Les mots de passe correspondent'
-            : 'Les mots de passe ne correspondent pas'}
-        </p>
-      )}
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
