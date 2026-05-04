@@ -163,7 +163,10 @@ function SignalementModal({
     if (isOpen) {
       setMotif(existingSignalement?.motif ?? '');
       setDescription(existingSignalement?.description ?? '');
-      setDone(false);
+      // Only reset the success screen when opening a NEW report (not an update)
+      if (!existingSignalement) {
+        setDone(false);
+      }
     }
   }, [isOpen, existingSignalement]);
 
@@ -175,8 +178,14 @@ function SignalementModal({
     setLoading(true);
     try {
       await signalementService.signaler(idRecruteur, { motif, description });
-      setDone(true);
       onSuccess();
+      if (existingSignalement) {
+        // For updates: close the modal immediately after success
+        onClose();
+      } else {
+        // For new reports: show the success confirmation screen
+        setDone(true);
+      }
     } catch (err: any) {
       alert(err.response?.data?.error ?? 'Erreur lors du signalement.');
     } finally {
@@ -208,7 +217,10 @@ function SignalementModal({
             <CheckCircle className="w-12 h-12 text-green-500 mx-auto" />
             <p className="font-bold text-slate-800">Signalement envoyé</p>
             <p className="text-sm text-slate-500">Notre équipe examinera votre signalement dans les plus brefs délais.</p>
-            <button onClick={onClose} className="mt-4 px-6 py-2.5 bg-slate-100 rounded-xl font-semibold text-slate-700 hover:bg-slate-200 transition-colors">
+            <button
+              onClick={onClose}
+              className="mt-4 px-6 py-2.5 bg-slate-100 rounded-xl font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
+            >
               Fermer
             </button>
           </div>
@@ -365,8 +377,8 @@ export default function RecruteurProfilePage() {
   const [commentsLoading, setCommentsLoading] = useState(false);
 
   // Signalement
-  const [signalOpen,       setSignalOpen]       = useState(false);
-  const [monSignalement,   setMonSignalement]   = useState<any>(null);
+  const [signalOpen,     setSignalOpen]     = useState(false);
+  const [monSignalement, setMonSignalement] = useState<any>(null);
 
   // Current logged-in user (to know if they're a candidate)
   const currentUser = JSON.parse(localStorage.getItem('user') ?? '{}');
@@ -448,8 +460,8 @@ export default function RecruteurProfilePage() {
     </div>
   );
 
-  const initials    = (profile.nomEntreprise || '?')[0].toUpperCase();
-  const location    = [profile.adresse?.ville, profile.adresse?.pays].filter(Boolean).join(', ');
+  const initials     = (profile.nomEntreprise || '?')[0].toUpperCase();
+  const location     = [profile.adresse?.ville, profile.adresse?.pays].filter(Boolean).join(', ');
   const activeOffres = offres.filter(o => o.statutOffre === 'ouvert');
 
   return (
@@ -642,7 +654,12 @@ export default function RecruteurProfilePage() {
         nomRecruteur={profile.nomEntreprise ?? 'ce recruteur'}
         existingSignalement={monSignalement}
         onSuccess={() => {
+          // Refresh the signalement state from server
           signalementService.getMonSignalement(id!).then(setMonSignalement).catch(() => {});
+          // Close the modal immediately (for updates; new reports show success screen first)
+          if (monSignalement) {
+            setSignalOpen(false);
+          }
         }}
       />
     </div>
