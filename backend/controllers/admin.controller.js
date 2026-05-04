@@ -4,6 +4,7 @@ const { createNotification } = require('../utils/notification')
 const Candidature  = require('../models/Candidature')
 const OffreTravail = require('../models/OffreTravail')
 const Match        = require('../models/Match')
+const Commentaire = require('../models/commentaire')
 const { verifyDocument } = require('../services/verification.service')
 
 // ── GET /api/admin/users ──────────────────────────────────────────────────────
@@ -303,10 +304,34 @@ const getDashboardStats = async (req, res) => {
     res.status(500).json({ error: err.message })
   }
 }
+// ── GET /api/admin/commentaires ───────────────────────────────────────────────
+const getAllCommentaires = async (req, res) => {
+  try {
+    const page  = parseInt(req.query.page)  || 1
+    const limit = parseInt(req.query.limit) || 15
+    const filter = {}
+    if (req.query.visible === 'true')  filter.visible = true
+    if (req.query.visible === 'false') filter.visible = false
+
+    const [commentaires, total] = await Promise.all([
+      Commentaire.find(filter)
+        .populate('idAuteur',    'prenom nom email statusCompte')
+        .populate('idRecruteur', 'nom nomEntreprise email statusCompte')
+        .sort({ dateCreation: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      Commentaire.countDocuments(filter),
+    ])
+
+    res.json({ commentaires, total, page, pages: Math.ceil(total / limit) })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
 
 module.exports = {
   listerUtilisateurs, recruteursEnAttente, getUtilisateur,
   getRecruteurDossier, validerRecruteur, reVerifyDocument,
   toggleSuspension, supprimerUtilisateur,
-  toutesLesCandidatures, getDashboardStats,
+  toutesLesCandidatures, getDashboardStats,getAllCommentaires
 }

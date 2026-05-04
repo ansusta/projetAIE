@@ -4,7 +4,7 @@ const {
   listerUtilisateurs, recruteursEnAttente, getUtilisateur,
   getRecruteurDossier, validerRecruteur, reVerifyDocument,
   toggleSuspension, supprimerUtilisateur,
-  toutesLesCandidatures, getDashboardStats,
+  toutesLesCandidatures, getDashboardStats,getAllCommentaires
 } = require('../controllers/admin.controller')
 const { authenticate, authorize } = require('../middleware/auth.middleware')
 
@@ -27,5 +27,6 @@ router.get('/recruteurs/:id/dossier',             getRecruteurDossier)
 
 // Re-trigger AI verification on a specific document
 router.post('/documents/:docId/re-verify',        reVerifyDocument)
+router.get('/commentaires', getAllCommentaires) // add before module.exports
 
 module.exports = router
