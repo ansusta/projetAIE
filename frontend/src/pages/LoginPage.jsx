@@ -35,7 +35,10 @@ const handleSubmit = async (e) => {
     if (etatValidation)  localStorage.setItem('etatValidation', etatValidation);
 
     // REDIRECT BASED ON ROLE + VALIDATION STATE
-    if (userRole === 'recruteur') {
+    if (userRole === 'admin') {
+      // 🚀 Redirect to the new Admin Dashboard
+      navigate('/admin-dashboard'); 
+    } else if (userRole === 'recruteur') {
       if (etatValidation === 'valideParAdmin') {
         navigate('/recruiter-dashboard');
       } else {
@@ -43,6 +46,7 @@ const handleSubmit = async (e) => {
         navigate('/unverifiedRecruteur');
       }
     } else {
+      // Candidat (or default fallback)
       navigate('/dashboard');
     }
 

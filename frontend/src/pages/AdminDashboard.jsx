@@ -4,8 +4,8 @@ import {
   Search, CheckCircle, XCircle, FileText, AlertTriangle, 
   Eye, ChevronRight, Check, Briefcase, Activity, Ban, RefreshCw, X
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'
-import Logo from '../components/Logo';
+import { useNavigate } from 'react-router-dom';
+import Logo from '../components/Logo'; // Make sure this path is correct
 import toast, { Toaster } from 'react-hot-toast';
 
 const API_BASE_URL = 'http://localhost:5000/api/admin';
@@ -13,75 +13,104 @@ const API_BASE_URL = 'http://localhost:5000/api/admin';
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const navigate = useNavigate();
+  
+  // State for data
   const [stats, setStats] = useState(null);
   const [pendingRecruiters, setPendingRecruiters] = useState([]);
   const [usersList, setUsersList] = useState([]);
   const [selectedDossier, setSelectedDossier] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
   
-  // NOUVEAU : État pour gérer le document en cours de visualisation
+  // State for UI
+  const [isLoading, setIsLoading] = useState(true); // Removed the duplicate declaration
   const [docToView, setDocToView] = useState(null);
+
+  // Helper to get auth headers
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': token ? `Bearer ${token}` : ''
+    };
+  };
 
   // ==========================================
   // FONCTION DE DÉCONNEXION
   // ==========================================
-const handleLogout = () => {
+  const handleLogout = () => {
     localStorage.removeItem('token'); 
     localStorage.removeItem('user');
     navigate('/login'); 
   };
 
   // ==========================================
-  // APPELS API
+  // APPELS API (Now with Authorization Headers!)
   // ==========================================
   const fetchStats = async () => {
+    setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/stats`);
+      const res = await fetch(`${API_BASE_URL}/stats`, { headers: getAuthHeaders() });
       if (res.ok) setStats(await res.json());
-    } catch (error) { console.error("Erreur stats:", error); }
+    } catch (error) { 
+      console.error("Erreur stats:", error); 
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchPendingRecruiters = async () => {
+    setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/users/recruteurs/en-attente`);
+      const res = await fetch(`${API_BASE_URL}/users/recruteurs/en-attente`, { headers: getAuthHeaders() });
       if (res.ok) setPendingRecruiters(await res.json());
-    } catch (error) { console.error("Erreur recruteurs en attente:", error); }
+    } catch (error) { 
+      console.error("Erreur recruteurs en attente:", error); 
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchUsers = async () => {
+    setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/users`);
+      const res = await fetch(`${API_BASE_URL}/users`, { headers: getAuthHeaders() });
       if (res.ok) {
         const data = await res.json();
         setUsersList(data.users);
       }
-    } catch (error) { console.error("Erreur utilisateurs:", error); }
+    } catch (error) { 
+      console.error("Erreur utilisateurs:", error); 
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchDossier = async (id) => {
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/recruteurs/${id}/dossier`);
+      const res = await fetch(`${API_BASE_URL}/recruteurs/${id}/dossier`, { headers: getAuthHeaders() });
       if (res.ok) setSelectedDossier(await res.json());
-    } catch (error) { console.error("Erreur dossier:", error); } 
-    finally { setIsLoading(false); }
+    } catch (error) { 
+      console.error("Erreur dossier:", error); 
+    } finally { 
+      setIsLoading(false); 
+    }
   };
 
   const handleTriggerVerification = async (docId) => {
     try {
-      // Note : La route documents est généralement hors de /admin, on utilise l'URL de base
+      // Assuming your documents route also needs protection
       const res = await fetch(`http://localhost:5000/api/documents/${docId}/verify`, {
-        method: 'POST'
+        method: 'POST',
+        headers: getAuthHeaders()
       });
       
       if (res.ok) {
-        // L'API répond tout de suite, mais l'analyse tourne en fond.
-        // On rafraîchit le dossier après 3 secondes pour laisser le temps à l'IA de finir.
+        toast.success("Analyse IA lancée !");
         setTimeout(() => {
           if (selectedDossier) fetchDossier(selectedDossier.recruteur._id);
         }, 3000);
       } else {
-        console.error("Impossible de lancer l'analyse");
+        toast.error("Impossible de lancer l'analyse.");
       }
     } catch (error) { 
       console.error("Erreur relance IA:", error); 
@@ -94,45 +123,51 @@ const handleLogout = () => {
     try {
       const res = await fetch(`${API_BASE_URL}/users/${id}/validate`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ decision, motif: decision === 'refuse' ? 'Dossier non conforme' : '' })
       });
       
       if (res.ok) {
-        // Success: Clear the dossier, refresh data, and show success toast
         setSelectedDossier(null);
         fetchPendingRecruiters();
-        fetchStats();
+        // Removed fetchStats() here since switching tabs will trigger it anyway, saving an API call
         toast.success('Décision enregistrée avec succès !', { id: toastId });
       } else {
-        // Fallback 1: Server responded with an error
         const errorData = await res.json().catch(() => ({}));
         console.error("Erreur API:", errorData);
         toast.error(`Échec : Le serveur a retourné une erreur ${res.status}.`, { id: toastId });
       }
     } catch (error) { 
-      // Fallback 2: Server is completely unreachable
       console.error("Erreur validation:", error); 
-      toast.error("Erreur réseau : Impossible de contacter le serveur (Port 5000).", { id: toastId });
+      toast.error("Erreur réseau : Impossible de contacter le serveur.", { id: toastId });
     }
   };
 
   const handleToggleSuspend = async (id) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/users/${id}/suspend`, { method: 'PATCH' });
+      const res = await fetch(`${API_BASE_URL}/users/${id}/suspend`, { 
+        method: 'PATCH',
+        headers: getAuthHeaders()
+      });
       if (res.ok) {
         fetchUsers();
-        fetchStats();
+        toast.success("Statut de l'utilisateur modifié.");
+      } else {
+        toast.error("Erreur lors de la modification du statut.");
       }
-    } catch (error) { console.error("Erreur suspension:", error); }
+    } catch (error) { 
+      console.error("Erreur suspension:", error); 
+    }
   };
 
   useEffect(() => {
     if (activeTab === 'overview') fetchStats();
     if (activeTab === 'approvals') fetchPendingRecruiters();
     if (activeTab === 'users') fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
+  
   // ==========================================
   // VUES (Vue d'ensemble, Validations, Utilisateurs)
   // ==========================================
