@@ -1,17 +1,15 @@
-const mongoose = require('mongoose')
+// models/OffreTravail.js
+const mongoose = require('mongoose');
 
-// Optional demographic targeting set by the recruiter.
-// Empty genres array = no gender restriction.
-// Null / 0 ageMin / ageMax = no age restriction.
+// Filtres personnels (inchangé)
 const filtresPersonnelsSchema = new mongoose.Schema({
   ageMin : { type: Number, min: 16, max: 99, default: null },
   ageMax : { type: Number, min: 16, max: 99, default: null },
-  // e.g. [] = everyone,  ['homme'] = men only,  ['homme','femme'] = men and women
   genres : {
     type    : [{ type: String, enum: ['homme', 'femme', 'autre', 'nonSpecifie'] }],
     default : []
   }
-}, { _id: false })
+}, { _id: false });
 
 const offreSchema = new mongoose.Schema({
   titre           : { type: String, required: true },
@@ -28,7 +26,9 @@ const offreSchema = new mongoose.Schema({
     ref     : 'Utilisateur',
     required: true
   },
-  filtresPersonnels: { type: filtresPersonnelsSchema, default: () => ({}) }
-})
+  filtresPersonnels: { type: filtresPersonnelsSchema, default: () => ({}) },
+  // ⭐ NOUVEAU CHAMP : nombre de postes à pourvoir (défaut 1)
+  nombrePostes     : { type: Number, default: 1, min: 1 }
+});
 
-module.exports = mongoose.model('OffreTravail', offreSchema)
+module.exports = mongoose.model('OffreTravail', offreSchema);
