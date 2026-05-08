@@ -93,7 +93,7 @@ jobs:
         run: sudo rm -f report_json.json report_md.md report_html.html
 
       - name: ZAP API Scan (AI Service)
-        uses: zaproxy/action-api-scan@v0.7.0
+        uses: zaproxy/action-api-scan@v0.10.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           format: openapi
