@@ -252,62 +252,290 @@ export default function AdminDashboard() {
       ))}
     </div>
   );
+  // Simple bar chart for gender distribution
+const BarChart = ({ data }) => {
+  const total = Object.values(data || {}).reduce((sum, val) => sum + val, 0);
+  if (total === 0) return <p className="text-xs text-slate-400">Aucune donnée</p>;
+  return (
+    <div className="space-y-2">
+      {Object.entries(data || {}).map(([label, count]) => (
+        <div key={label} className="flex items-center gap-2 text-sm">
+          <span className="w-20 text-slate-500 capitalize">{label}</span>
+          <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-indigo-400 rounded-full"
+              style={{ width: `${(count / total) * 100}%` }}
+            />
+          </div>
+          <span className="w-10 text-right font-medium text-slate-600">{count}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
 
-  // ── RENDER: Overview ─────────────────────────────────────────────────────────
-  const renderOverview = () => {
-    if (!stats) return (
-      <div className="flex items-center justify-center h-[60vh] text-slate-500 gap-3">
-        <RefreshCw className="w-6 h-6 animate-spin" />
-        <span className="text-lg font-medium">Chargement...</span>
+const renderOverview = () => {
+  if (!stats) return (
+    <div className="flex items-center justify-center h-[60vh] text-slate-500 gap-3">
+      <RefreshCw className="w-6 h-6 animate-spin" />
+      <span className="text-lg font-medium">Chargement...</span>
+    </div>
+  );
+
+  const offresPop = stats.offres?.populaires || [];
+  const offresMatch = stats.offres?.lesPlusMatchées || [];
+  const offresEmbauche = stats.offres?.meilleurEmbauche || [];
+  const engagement = stats.engagementCandidats || {};
+  const topCandidats = engagement.topCandidats || [];
+  const genre = stats.genreDistribution || {};
+  const commentaires = stats.commentaires || {};
+    const recruteursEmbauche = stats.offres?.recruteursEmbauche || [];
+  
+
+  return (
+    <div className="animate-fade-in space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-slate-800">Vue d'ensemble</h2>
+        <p className="text-slate-500 text-sm mt-1">Les performances de MatchTalent en un coup d'œil.</p>
       </div>
-    );
-    return (
-      <div className="animate-fade-in space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">Vue d'ensemble</h2>
-          <p className="text-slate-500 text-sm mt-1">Les performances de MatchTalent en un coup d'œil.</p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[
-            { title: 'Candidats',     value: stats.users.totalCandidats,  icon: Users,      color: 'text-blue-600',   bg: 'bg-blue-50'   },
-            { title: 'Recruteurs',    value: stats.users.totalRecruteurs,  icon: Building,   color: 'text-emerald-600',bg: 'bg-emerald-50'},
-            { title: 'Offres Actives',value: stats.offres.ouvertes,       icon: Briefcase,  color: 'text-indigo-600', bg: 'bg-indigo-50' },
-            { title: 'En attente',    value: stats.users.recruteursEnAttente + stats.users.recruteursValideParIA, icon: ShieldCheck, color: 'text-amber-600', bg: 'bg-amber-50'},
-          ].map((s, i) => (
-            <div key={i} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20 flex items-center gap-5">
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${s.bg} ${s.color}`}>
-                <s.icon className="w-7 h-7" />
-              </div>
-              <div>
-                <p className="text-slate-500 text-sm font-medium">{s.title}</p>
-                <p className="text-2xl font-black text-slate-800">{s.value}</p>
-              </div>
+
+      {/* ── Compteurs principaux (inchangés) ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[
+          { title: 'Candidats',     value: stats.users.totalCandidats,  icon: Users,      color: 'text-blue-600',   bg: 'bg-blue-50'   },
+          { title: 'Recruteurs',    value: stats.users.totalRecruteurs,  icon: Building,   color: 'text-emerald-600',bg: 'bg-emerald-50'},
+          { title: 'Offres Actives',value: stats.offres.ouvertes,       icon: Briefcase,  color: 'text-indigo-600', bg: 'bg-indigo-50' },
+          { title: 'En attente',    value: stats.users.recruteursEnAttente + stats.users.recruteursValideParIA, icon: ShieldCheck, color: 'text-amber-600', bg: 'bg-amber-50'},
+        ].map((s, i) => (
+          <div key={i} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20 flex items-center gap-5">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${s.bg} ${s.color}`}>
+              <s.icon className="w-7 h-7" />
             </div>
-          ))}
-        </div>
-        <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
-          <div className="flex items-center gap-3 mb-4">
-            <Activity className="w-6 h-6 text-indigo-600" />
-            <h3 className="text-lg font-bold text-slate-800">Activité de l'Intelligence Artificielle</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mt-6">
-            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-              <p className="text-slate-500 mb-1 font-medium">Total Matchs Effectués</p>
-              <p className="text-2xl font-black text-slate-800">{stats.aiMatch?.totalMatchs || 0}</p>
-            </div>
-            <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-100">
-              <p className="text-emerald-700 mb-1 font-medium">Documents Approuvés</p>
-              <p className="text-2xl font-black text-emerald-600">{stats.aiVerification.approuves}</p>
-            </div>
-            <div className="bg-red-50 p-5 rounded-2xl border border-red-100">
-              <p className="text-red-700 mb-1 font-medium">Documents Rejetés</p>
-              <p className="text-2xl font-black text-red-600">{stats.aiVerification.rejetes}</p>
+            <div>
+              <p className="text-slate-500 text-sm font-medium">{s.title}</p>
+              <p className="text-2xl font-black text-slate-800">{s.value}</p>
             </div>
           </div>
+        ))}
+      </div>
+
+      {/* ── Activité IA (inchangé) ── */}
+      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
+        <div className="flex items-center gap-3 mb-4">
+          <Activity className="w-6 h-6 text-indigo-600" />
+          <h3 className="text-lg font-bold text-slate-800">Activité de l'Intelligence Artificielle</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mt-6">
+          <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+            <p className="text-slate-500 mb-1 font-medium">Total Matchs Effectués</p>
+            <p className="text-2xl font-black text-slate-800">{stats.aiMatch?.totalMatchs || 0}</p>
+          </div>
+          <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-100">
+            <p className="text-emerald-700 mb-1 font-medium">Documents Approuvés</p>
+            <p className="text-2xl font-black text-emerald-600">{stats.aiVerification.approuves}</p>
+          </div>
+          <div className="bg-red-50 p-5 rounded-2xl border border-red-100">
+            <p className="text-red-700 mb-1 font-medium">Documents Rejetés</p>
+            <p className="text-2xl font-black text-red-600">{stats.aiVerification.rejetes}</p>
+          </div>
         </div>
       </div>
-    );
-  };
+
+      {/* ── OFFRES LES PLUS POPULAIRES (candidatures) ── */}
+      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
+        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+          <Briefcase className="w-5 h-5 text-indigo-600" /> Offres les plus demandées (30 derniers jours)
+        </h3>
+        {offresPop.length === 0 ? (
+          <p className="text-slate-400 text-sm">Aucune candidature récente.</p>
+        ) : (
+          <div className="space-y-4">
+            {offresPop.map((o, i) => (
+              <div key={o.offreId} className="flex items-center gap-4">
+                <span className="text-sm font-bold text-slate-400 w-6">{i+1}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-slate-800 text-sm truncate">{o.titre}</p>
+                  <p className="text-xs text-slate-500">{o.localisation} · {o.typeContrat}</p>
+                  <div className="mt-1.5 h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-indigo-500 rounded-full"
+                      style={{ width: `${Math.min(100, (o.totalCandidatures / (offresPop[0]?.totalCandidatures || 1)) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+                <span className="text-sm font-black text-indigo-600 whitespace-nowrap">{o.totalCandidatures} candidatures</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── MEILLEURS SCORES AI ── */}
+      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
+        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+          <Percent className="w-5 h-5 text-indigo-600" /> Offres avec le meilleur score de matching AI
+        </h3>
+        {offresMatch.length === 0 ? (
+          <p className="text-slate-400 text-sm">Aucun match calculé.</p>
+        ) : (
+          <div className="space-y-4">
+            {offresMatch.map((o, i) => (
+              <div key={o.offreId} className="flex items-center gap-4">
+                <span className="text-sm font-bold text-slate-400 w-6">{i+1}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-slate-800 text-sm truncate">{o.titre}</p>
+                  <div className="mt-1.5 h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-500 rounded-full"
+                      style={{ width: `${o.avgScore}%` }}
+                    />
+                  </div>
+                </div>
+                <span className="text-sm font-black text-emerald-600 whitespace-nowrap">{o.avgScore}% moyen</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── RECRUTEURS AVEC LE MEILLEUR TAUX D'EMBAUCHE ── */}
+      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
+        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+          <CheckCircle className="w-5 h-5 text-indigo-600" /> Recruteurs avec le meilleur taux d'embauche
+        </h3>
+        {recruteursEmbauche.length === 0 ? (
+          <p className="text-slate-400 text-sm">Aucune embauche enregistrée.</p>
+        ) : (
+          <div className="space-y-4">
+            {recruteursEmbauche.map((r, i) => (
+              <div key={r.recruteurId} className="flex items-center gap-4">
+                <span className="text-sm font-bold text-slate-400 w-6">{i+1}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-slate-800 text-sm truncate">
+                    {r.nomEntreprise || r.email}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {r.embauchees} embauches / {r.totalCandidatures} candidatures
+                  </p>
+                  <div className="mt-1.5 h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-amber-500 rounded-full"
+                      style={{ width: `${r.ratioEmbauche}%` }}
+                    />
+                  </div>
+                </div>
+                <span className="text-sm font-black text-amber-600 whitespace-nowrap">
+                  {r.ratioEmbauche}%
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── ENGAGEMENT CANDIDATS ── */}
+      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
+        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+          <Users className="w-5 h-5 text-indigo-600" /> Engagement des candidats
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+            <p className="text-slate-500 mb-1 font-medium">Candidats actifs</p>
+            <p className="text-2xl font-black text-slate-800">{engagement.totalCandidatsActifs || 0}</p>
+          </div>
+          <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+            <p className="text-slate-500 mb-1 font-medium">Moyenne de candidatures</p>
+            <p className="text-2xl font-black text-slate-800">{engagement.moyCandidaturesParCandidat || 0}</p>
+          </div>
+        </div>
+        {topCandidats.length > 0 && (
+          <div className="mt-6">
+            <p className="text-sm font-semibold text-slate-600 mb-3">Top 5 candidats les plus actifs</p>
+            <div className="space-y-3">
+              {topCandidats.map((c, i) => (
+                <div key={c.candidatId} className="flex items-center gap-3">
+                  <span className="text-sm font-bold text-slate-400 w-6">{i+1}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800">{c.prenom} {c.nom}</p>
+                    <p className="text-xs text-slate-500">{c.email}</p>
+                  </div>
+                  <span className="text-sm font-bold text-indigo-600">{c.totalApplications} candidatures</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── GENRE ── */}
+      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
+        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+          <Users className="w-5 h-5 text-indigo-600" /> Répartition par genre
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <p className="text-sm font-semibold text-slate-600 mb-3">Candidats</p>
+            <BarChart data={genre.candidats || {}} />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-600 mb-3">Recruteurs</p>
+            <BarChart data={genre.recruteurs || {}} />
+          </div>
+        </div>
+      </div>
+
+      {/* ── AVIS & COMMENTAIRES ── */}
+      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
+        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+          <MessageSquare className="w-5 h-5 text-indigo-600" /> Avis & commentaires
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+            <p className="text-slate-500 mb-1 font-medium">Total commentaires</p>
+            <p className="text-2xl font-black text-slate-800">{commentaires.total || 0}</p>
+          </div>
+          <div className="bg-amber-50 p-5 rounded-2xl border border-amber-100">
+            <p className="text-amber-700 mb-1 font-medium">Note moyenne</p>
+            <div className="flex items-center gap-2">
+              <p className="text-2xl font-black text-amber-600">{commentaires.noteMoyenne || 0}</p>
+              <StarDisplay note={Math.round(commentaires.noteMoyenne) || 0} />
+            </div>
+          </div>
+          <div className="bg-red-50 p-5 rounded-2xl border border-red-100">
+            <p className="text-red-700 mb-1 font-medium">Masqués</p>
+            <p className="text-2xl font-black text-red-600">{commentaires.hidden || 0}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── CROISSANCE UTILISATEURS (30 jours) ── */}
+      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
+        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+          <Activity className="w-5 h-5 text-indigo-600" /> Croissance des inscriptions (30 jours)
+        </h3>
+        {stats.userGrowth?.length > 0 ? (
+          <div className="space-y-2">
+            {stats.userGrowth.map(day => (
+              <div key={day.date} className="flex items-center gap-3 text-sm">
+                <span className="w-28 text-slate-500 font-medium">{day.date}</span>
+                <div className="flex-1 h-5 bg-indigo-50 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-indigo-500 rounded-full flex items-center justify-end pr-2"
+                    style={{ width: `${Math.min(100, (day.count / Math.max(...stats.userGrowth.map(d => d.count))) * 100)}%` }}
+                  >
+                    <span className="text-[10px] font-bold text-white">{day.count}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-slate-400 text-sm">Données insuffisantes.</p>
+        )}
+      </div>
+    </div>
+  );
+};
 
   // ── RENDER: Approvals list ───────────────────────────────────────────────────
   const renderApprovalsList = () => (
