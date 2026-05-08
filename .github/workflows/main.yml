@@ -89,6 +89,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Clean up previous ZAP reports
+        run: sudo rm -f report_json.json report_md.md report_html.html
+
       - name: ZAP API Scan (AI Service)
         uses: zaproxy/action-api-scan@v0.7.0
         with:
