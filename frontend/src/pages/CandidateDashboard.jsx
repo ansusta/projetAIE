@@ -35,7 +35,7 @@ const STATUS_MAP = {
   Recue: { label: 'Reçue', color: 'bg-slate-100 text-slate-600 border-slate-200', Icon: AlertCircle },
   demandeDocSupp: { label: 'Docs demandés', color: 'bg-amber-50 text-amber-700 border-amber-200', Icon: AlertCircle },
   convocationEntretien: { label: 'Entretien', color: 'bg-blue-50 text-blue-700 border-blue-200', Icon: Calendar },
-  Embauchee: { label: 'Acceptée 🎉', color: 'bg-green-50 text-green-700 border-green-200', Icon: CheckCircle },
+  Embauchee: { label: 'Acceptée ', color: 'bg-green-50 text-green-700 border-green-200', Icon: CheckCircle },
   refusee: { label: 'Refusée', color: 'bg-red-50 text-red-600 border-red-200', Icon: XCircle },
 };
 
@@ -45,14 +45,14 @@ const SECTEUR_OPTIONS = [
   'Éducation', 'Ingénierie', 'Commerce', 'Juridique', 'Autre'
 ];
 const STATUT_OFFRE_OPTIONS = [
-  { value: 'toutes', label: '📋 Toutes', icon: '📋' },
-  { value: 'ouvert', label: '✅ Actives', icon: '✅' },
-  { value: 'fermer', label: '🔒 Fermées', icon: '🔒' },
+  { value: 'toutes', label: ' Toutes', icon: '' },
+  { value: 'ouvert', label: ' Actives', icon: '' },
+  { value: 'fermer', label: ' Fermées', icon: '' },
 ];
 const SORT_OPTIONS = [
-  { value: 'date_desc', label: '📅 Date récente → ancienne' },
-  { value: 'date_asc', label: '📅 Date ancienne → récente' },
-  { value: 'salaire_desc', label: '💰 Salaire décroissant' },
+  { value: 'date_desc', label: ' Date récente → ancienne' },
+  { value: 'date_asc', label: ' Date ancienne → récente' },
+  { value: 'salaire_desc', label: ' Salaire décroissant' },
 ];
 
 // ── Preference filter helper ──────────────────────────────────────────────────
@@ -153,7 +153,7 @@ function OffreDetailPanel({ offre, onApply, applying, alreadyApplied }) {
           )}
           {(offre.filtresPersonnels?.ageMin || offre.filtresPersonnels?.ageMax || offre.filtresPersonnels?.genres?.length > 0) && (
             <div className="p-3 bg-violet-50 border border-violet-200 rounded-xl">
-              <p className="text-xs font-bold text-violet-700 mb-1.5">🎯 Critères de ciblage</p>
+              <p className="text-xs font-bold text-violet-700 mb-1.5"> Critères de ciblage</p>
               <p className="text-xs text-violet-600">
                 {offre.filtresPersonnels.ageMin && `Âge minimum : ${offre.filtresPersonnels.ageMin} ans. `}
                 {offre.filtresPersonnels.ageMax && `Âge maximum : ${offre.filtresPersonnels.ageMax} ans. `}
@@ -415,6 +415,9 @@ export default function CandidatDashboard() {
   const [matchApplyMsg, setMatchApplyMsg] = useState('');
   const [prefFilterOn, setPrefFilterOn] = useState(false);
 
+  // ── FIX: track whether a match fetch has already been attempted ──────────
+  const matchFetchedRef = useRef(false);
+
   // Historique
   const [matchHistory, setMatchHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -440,12 +443,10 @@ export default function CandidatDashboard() {
     if (location.state?.tab === 'candidatures') {
       setActiveTab('applications');
       if (location.state?.candidatureId) {
-        // Load candidatures then auto-expand the relevant one
         loadCandidatures().then(() => {
           setExpandedCand(location.state.candidatureId);
         });
       }
-      // Clear location state to avoid re-triggering
       window.history.replaceState({}, document.title);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -474,12 +475,14 @@ export default function CandidatDashboard() {
   }, []);
 
   // Chargement selon onglet
+  // ── FIX: use matchFetchedRef instead of !matchData to avoid infinite loop
+  // when backend returns { match: null } (valid empty state, not an error)
   useEffect(() => {
     if (activeTab === 'home' && offres.length === 0) loadOffres();
-    if (activeTab === 'matches' && !matchData && !matchLoading) loadMatch();
+    if (activeTab === 'matches' && !matchLoading && !matchFetchedRef.current) loadMatch();
     if (activeTab === 'history' && matchHistory.length === 0) loadMatchHistory();
     if (activeTab === 'applications' && candidatures.length === 0) loadCandidatures();
-  }, [activeTab, offres.length, matchData, matchLoading, matchHistory.length, candidatures.length]);
+  }, [activeTab, offres.length, matchLoading, matchHistory.length, candidatures.length]);
 
   // Filtrage + tri des offres
   useEffect(() => {
@@ -536,20 +539,28 @@ export default function CandidatDashboard() {
     setMatchApplyMsg('');
     try {
       const data = await matchService.getRecommandations();
-      if (withPref && hasPreferences(currentUser) && data.match) {
+
+      if (!data.match) {
+        // Valid empty state — no more offers. Do NOT re-fetch.
+        setMatchData(null);
+        return;
+      }
+
+      if (withPref && hasPreferences(currentUser)) {
         const filtered = applyPreferenceFilter([data.match.offre], currentUser);
         if (filtered.length === 0) {
           setPrefFilterOn(false);
-          setMatchData(data.match);
-        } else {
-          setMatchData(data.match);
         }
-      } else {
-        setMatchData(data.match);
       }
+      setMatchData(data.match);
     } catch (err) {
       setMatchError(err.response?.data?.error || 'Impossible de charger la recommandation.');
-    } finally { setMatchLoading(false); }
+    } finally {
+      setMatchLoading(false);
+      // ── FIX: mark as fetched regardless of result so the useEffect
+      // does not re-trigger when matchData stays null
+      matchFetchedRef.current = true;
+    }
   }, [currentUser, prefFilterOn]);
 
   const loadMatchHistory = useCallback(async () => {
@@ -607,6 +618,8 @@ export default function CandidatDashboard() {
       const res = await matchService.apply(offreId);
       setMatchApplyMsg(`✅ Candidature envoyée ! Score IA : ${res.matchScore}%`);
       setMatchData(null);
+      // ── FIX: reset so clicking "Suivante" after applying fetches fresh
+      matchFetchedRef.current = false;
       toast.success(`Candidature envoyée avec un score IA de ${res.matchScore}% !`);
     } catch (err) {
       setMatchApplyMsg(`❌ ${err.response?.data?.error || 'Erreur lors de la candidature.'}`);
@@ -639,7 +652,6 @@ export default function CandidatDashboard() {
 
   // ── Notification click handler ─────────────────────────────────────────────
   const handleNotifClick = async (notif) => {
-    // Mark as read
     if (!notif.lu) {
       try {
         await notificationService.markAsRead(notif._id);
@@ -649,14 +661,12 @@ export default function CandidatDashboard() {
     }
     setNotifOpen(false);
 
-    // Navigate based on notification type/content
     if (notif.idCandidature) {
       setActiveTab('applications');
       await loadCandidatures();
       setExpandedCand(notif.idCandidature);
       return;
     }
-    // Fallback: navigate to applications tab
     setActiveTab('applications');
   };
 
@@ -777,7 +787,7 @@ export default function CandidatDashboard() {
                               <span className="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100">Dès {offre.salaireMin.toLocaleString()} DZD</span>
                             )}
                             {isClosed && (
-                              <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">🔒 Offre pourvue</span>
+                              <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Offre pourvue</span>
                             )}
                           </div>
                           <TargetBadges filtres={offre.filtresPersonnels} />
@@ -834,7 +844,13 @@ export default function CandidatDashboard() {
       <div className="space-y-6">
         <div className="flex justify-between items-end">
           <div><h2 className="text-2xl font-bold text-slate-900">Match IA</h2><p className="text-slate-500 text-sm">L'IA analyse votre CV et vous propose la meilleure offre.</p></div>
-          <button onClick={() => loadMatch(prefFilterOn)} disabled={matchLoading}
+          <button
+            onClick={() => {
+              // ── FIX: reset ref so manual refresh always fetches fresh
+              matchFetchedRef.current = false;
+              loadMatch(prefFilterOn);
+            }}
+            disabled={matchLoading}
             className="flex items-center gap-2 text-sm text-slate-600 hover:text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg font-semibold disabled:opacity-50">
             <RefreshCw className={`w-4 h-4 ${matchLoading ? 'animate-spin' : ''}`} /> Suivante
           </button>
@@ -844,7 +860,14 @@ export default function CandidatDashboard() {
           <div className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
             <Target className="w-4 h-4 text-indigo-500 shrink-0" />
             <span className="text-sm font-medium text-slate-700 flex-1">Filtrer selon mes préférences</span>
-            <button onClick={() => { const next = !prefFilterOn; setPrefFilterOn(next); loadMatch(next); }}
+            <button
+              onClick={() => {
+                // ── FIX: reset ref so toggling preference re-fetches
+                matchFetchedRef.current = false;
+                const next = !prefFilterOn;
+                setPrefFilterOn(next);
+                loadMatch(next);
+              }}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${prefFilterOn ? 'bg-indigo-600' : 'bg-slate-200'}`}>
               <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${prefFilterOn ? 'translate-x-6' : 'translate-x-1'}`} />
             </button>
@@ -860,7 +883,7 @@ export default function CandidatDashboard() {
         {matchLoading ? (
           <div className="flex flex-col items-center justify-center h-64 gap-4 bg-white rounded-2xl border border-slate-100"><Loader2 className="w-10 h-10 text-blue-400 animate-spin" /><p className="text-slate-500">L'IA calcule votre meilleur match…</p></div>
         ) : matchError ? (
-          <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center space-y-3"><p className="text-slate-500">{matchError}</p>{matchError.toLowerCase().includes('cv') && <button onClick={() => navigate('/onboarding')} className="bg-blue-600 text-white px-5 py-2 rounded-xl font-semibold text-sm">Créer mon CV</button>}<button onClick={() => loadMatch(prefFilterOn)} className="block mx-auto text-blue-600 text-sm font-medium underline">Réessayer</button></div>
+          <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center space-y-3"><p className="text-slate-500">{matchError}</p>{matchError.toLowerCase().includes('cv') && <button onClick={() => navigate('/onboarding')} className="bg-blue-600 text-white px-5 py-2 rounded-xl font-semibold text-sm">Créer mon CV</button>}<button onClick={() => { matchFetchedRef.current = false; loadMatch(prefFilterOn); }} className="block mx-auto text-blue-600 text-sm font-medium underline">Réessayer</button></div>
         ) : matchData ? (
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
             <div className="flex items-start gap-4 mb-5">
@@ -878,7 +901,15 @@ export default function CandidatDashboard() {
             <button onClick={() => handleMatchApply(matchData.offre._id)} disabled={matchApplying} className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 disabled:opacity-60">{matchApplying ? <><Loader2 className="w-4 h-4 animate-spin" /> Candidature en cours…</> : <><Sparkles className="w-4 h-4" /> Postuler avec ce match IA</>}</button>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-dashed border-slate-200 h-48 flex flex-col items-center justify-center text-slate-400 gap-3"><Target className="w-10 h-10 text-slate-300" /><p>Aucune nouvelle offre disponible.</p><button onClick={() => loadMatch(false)} className="text-blue-600 text-sm font-semibold hover:underline">Chercher sans filtres</button></div>
+          <div className="bg-white rounded-2xl border border-dashed border-slate-200 h-48 flex flex-col items-center justify-center text-slate-400 gap-3">
+            <Target className="w-10 h-10 text-slate-300" />
+            <p>Aucune nouvelle offre disponible.</p>
+            <button
+              onClick={() => { matchFetchedRef.current = false; loadMatch(false); }}
+              className="text-blue-600 text-sm font-semibold hover:underline">
+              Chercher sans filtres
+            </button>
+          </div>
         )}
       </div>
     );
@@ -916,7 +947,7 @@ export default function CandidatDashboard() {
                         <div className="flex flex-wrap gap-1.5 mt-2">
                           <ScorePill score={item.matchScore} />
                           {offre.typeContrat && <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg border ${CONTRACT_COLOR[offre.typeContrat] || 'bg-slate-50 text-slate-500'}`}>{offre.typeContrat}</span>}
-                          {isClosed && <span className="text-xs font-semibold px-2 py-0.5 rounded-lg border bg-red-100 text-red-700">🔒 Offre pourvue</span>}
+                          {isClosed && <span className="text-xs font-semibold px-2 py-0.5 rounded-lg border bg-red-100 text-red-700"> Offre pourvue</span>}
                         </div>
                         <p className="text-xs text-slate-400 mt-1.5">Suggéré le {new Date(item.dateCalcul).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                       </div>
@@ -962,12 +993,9 @@ export default function CandidatDashboard() {
           <div className="space-y-3">
             {candidatures.map(c => {
               const offre = c.idOffre || {};
-              // ── Poste pris = offre fermée ET candidature non embauche ────
               const isPostePris = offre.statutOffre === 'fermer' && c.etatCandidature !== 'Embauchee';
               const st = STATUS_MAP[c.etatCandidature] || STATUS_MAP.Recue;
               const isExpanded = expandedCand === c._id;
-
-              // Si poste pris, on affiche un statut spécial
               const displayStatus = isPostePris
                 ? { label: 'Poste pris', color: 'bg-red-100 text-red-700 border-red-200', Icon: AlertTriangle }
                 : st;
@@ -983,14 +1011,12 @@ export default function CandidatDashboard() {
                         : 'border-slate-200 bg-white shadow-sm hover:border-slate-300'
                   }`}
                 >
-                  {/* Banner "Poste pris" */}
                   {isPostePris && (
                     <div className="flex items-center gap-2 px-5 py-2.5 bg-red-500 rounded-t-xl text-white text-xs font-bold">
                       <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                       Ce poste a été pourvu par un autre candidat — votre candidature n'est plus active.
                     </div>
                   )}
-
                   <div className="p-5 cursor-pointer" onClick={() => setExpandedCand(isExpanded ? null : c._id)}>
                     <div className="flex items-start gap-4">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ${isPostePris ? 'bg-red-100 text-red-500' : 'bg-slate-100 text-slate-400'}`}>
