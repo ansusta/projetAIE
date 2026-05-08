@@ -79,7 +79,22 @@ const candidaturesParOffre = async (req, res) => {
       .populate('idDocSup')
       .sort({ dateCandidature: -1 })
 
-    res.json(candidatures)
+    // Enrich with AI match score when available
+    const enriched = await Promise.all(
+      candidatures.map(async (c) => {
+        const match = await Match.findOne({
+          idCandidat: c.idCandidat._id,
+          idOffre:    c.idOffre,
+        })
+        return {
+          ...c.toObject(),
+          matchScore:      match ? Math.round(match.score * 100) : null,
+          typePostulation: match ? 'matching' : 'manuelle',
+        }
+      })
+    )
+
+    res.json(enriched)
   } catch (err) {
     res.status(500).json({ error: err.message })
   }

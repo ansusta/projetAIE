@@ -236,7 +236,6 @@ function PlanifierEntretienModal({ isOpen, onClose, candidatureId, candidatName,
   );
 }
 
-// ── Candidate Profile Modal ───────────────────────────────────────────────────
 function CandidateProfileModal({ isOpen, onClose, candidature, onStatusChange }) {
   const navigate = useNavigate();
   const [cv, setCv] = useState(null);
@@ -244,7 +243,9 @@ function CandidateProfileModal({ isOpen, onClose, candidature, onStatusChange })
   const [status, setStatus] = useState(candidature?.etatCandidature || 'Recue');
   const [saving, setSaving] = useState(false);
   const [entretienModal, setEntretienModal] = useState(false);
+
   const candidat = candidature?.idCandidat || {};
+  const offre    = candidature?.idOffre    || {};
 
   useEffect(() => {
     if (!isOpen || !candidat._id) return;
@@ -264,118 +265,294 @@ function CandidateProfileModal({ isOpen, onClose, candidature, onStatusChange })
   const handleStatusChange = async (val) => {
     setSaving(true);
     try {
-      await apiFetch(`/api/candidature/${candidature._id}/statut`, { method: 'PATCH', body: JSON.stringify({ etatCandidature: val }) });
+      await apiFetch(`/api/candidature/${candidature._id}/statut`, {
+        method: 'PATCH',
+        body: JSON.stringify({ etatCandidature: val }),
+      });
       setStatus(val);
       onStatusChange?.(candidature._id, val);
-    } catch (e) { alert('Erreur : ' + e.message); } finally { setSaving(false); }
+    } catch (e) {
+      alert('Erreur : ' + e.message);
+    } finally { setSaving(false); }
   };
 
   const s = STATUT_LABEL[status] || STATUT_LABEL.Recue;
+
   const niveauColor = {
-    débutant: 'bg-slate-100 text-slate-600',
+    débutant:      'bg-slate-100 text-slate-600',
     intermédiaire: 'bg-blue-50 text-blue-600',
-    avancé: 'bg-indigo-50 text-indigo-600',
-    courant: 'bg-green-50 text-green-700',
-    natif: 'bg-emerald-50 text-emerald-700'
+    avancé:        'bg-indigo-50 text-indigo-600',
+    courant:       'bg-green-50 text-green-700',
+    natif:         'bg-emerald-50 text-emerald-700',
   };
-  const fmt = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }) : '?';
+
+  const fmt = (dateStr) => {
+    if (!dateStr) return '?';
+    return new Date(dateStr).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
+  };
+
+  const genreLabel = { homme: 'Homme', femme: 'Femme', nonSpecifie: 'Non précisé' };
 
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
         <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
-          <div className="px-8 py-6 border-b border-slate-100 flex items-start justify-between bg-gradient-to-r from-indigo-50 to-white">
-            <div className="flex items-center gap-5">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-white flex items-center justify-center text-2xl font-black shadow-lg">{candidat.nom?.[0] || candidat.prenom?.[0] || '?'}</div>
+
+          {/* Header */}
+          <div className="px-8 py-6 border-b border-slate-100 flex items-start justify-between relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 opacity-50 pointer-events-none" />
+            <div className="flex items-center gap-5 relative z-10">
+              <div className="w-16 h-16 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-2xl font-black shadow-inner shrink-0">
+                {candidat.nom?.[0] || candidat.prenom?.[0] || '?'}
+              </div>
               <div>
                 <h2 className="text-2xl font-bold text-slate-800">{candidat.prenom} {candidat.nom}</h2>
                 <p className="text-indigo-600 font-semibold">{cv?.titrePoste || 'Candidat'}</p>
                 <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
-                  {candidat.email && <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" />{candidat.email}</span>}
+                  {candidat.email     && <span className="flex items-center gap-1"><Mail  className="w-3.5 h-3.5" />{candidat.email}</span>}
                   {candidat.telephone && <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" />{candidat.telephone}</span>}
+                </div>
+                <div className="flex items-center gap-3 mt-1 text-xs text-slate-400">
+                  {candidat.genre && candidat.genre !== 'nonSpecifie' && (
+                    <span className="bg-slate-100 px-2 py-0.5 rounded-md">{genreLabel[candidat.genre] || candidat.genre}</span>
+                  )}
+                  {candidat.dateNaissance && (
+                    <span>Né(e) le {new Date(candidat.dateNaissance).toLocaleDateString('fr-FR')}</span>
+                  )}
                 </div>
               </div>
             </div>
-            <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full"><X className="w-6 h-6" /></button>
+            <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full relative z-10">
+              <X className="w-6 h-6" />
+            </button>
           </div>
+
+          {/* Body */}
           <div className="flex-1 overflow-y-auto p-8 bg-slate-50">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+              {/* LEFT: CV */}
               <div className="lg:col-span-2 space-y-5">
                 {candidat.bio && (
-                  <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2"><User className="w-3.5 h-3.5" /> À propos</h3>
-                    <p className="text-sm text-slate-700">{candidat.bio}</p>
+                  <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                      <User className="w-3.5 h-3.5" /> À propos
+                    </h3>
+                    <p className="text-sm text-slate-700 leading-relaxed">{candidat.bio}</p>
                   </div>
                 )}
+
                 {cvLoading ? (
-                  <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 text-indigo-400 animate-spin" /></div>
+                  <div className="flex items-center justify-center h-32 bg-white rounded-2xl border border-slate-100">
+                    <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
+                  </div>
                 ) : cv ? (
                   <>
                     {cv.competences?.length > 0 && (
-                      <div className="bg-white p-5 rounded-2xl shadow-sm">
-                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2"><Code2 className="w-3.5 h-3.5" /> Compétences</h3>
-                        <div className="flex flex-wrap gap-2">{cv.competences.map((c,i)=><span key={i} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium border border-blue-100">{c}</span>)}</div>
+                      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                          <Code2 className="w-3.5 h-3.5" /> Compétences
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                          {cv.competences.map((c, i) => (
+                            <span key={i} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium border border-blue-100">{c}</span>
+                          ))}
+                        </div>
                       </div>
                     )}
+
                     {cv.experiences?.length > 0 && (
-                      <div className="bg-white p-5 rounded-2xl shadow-sm">
-                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2"><Briefcase className="w-3.5 h-3.5" /> Expériences</h3>
-                        <div className="space-y-4">{cv.experiences.map((exp,i)=><div key={i} className="flex gap-3"><div className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-2 shrink-0"/><div><p className="font-semibold text-slate-800 text-sm">{exp.poste}</p><p className="text-xs text-slate-500">{exp.entreprise}{exp.localisation?` · ${exp.localisation}`:''}</p><p className="text-xs text-slate-400 mt-0.5">{fmt(exp.dateDebut)} — {exp.enCours?'présent':fmt(exp.dateFin)}</p>{exp.description && <p className="text-xs text-slate-600 mt-1">{exp.description}</p>}</div></div>)}</div>
+                      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                          <Briefcase className="w-3.5 h-3.5" /> Expériences
+                        </h3>
+                        <div className="space-y-4">
+                          {cv.experiences.map((exp, i) => (
+                            <div key={i} className="flex gap-3">
+                              <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-2 shrink-0" />
+                              <div>
+                                <p className="font-semibold text-slate-800 text-sm">{exp.poste}</p>
+                                <p className="text-xs text-slate-500">{exp.entreprise}{exp.localisation ? ` · ${exp.localisation}` : ''}</p>
+                                <p className="text-xs text-slate-400 mt-0.5">
+                                  {fmt(exp.dateDebut)} — {exp.enCours ? 'présent' : fmt(exp.dateFin)}
+                                </p>
+                                {exp.description && <p className="text-xs text-slate-600 mt-1">{exp.description}</p>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
+
                     {cv.formations?.length > 0 && (
-                      <div className="bg-white p-5 rounded-2xl shadow-sm">
-                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2"><GraduationCap className="w-3.5 h-3.5" /> Formation</h3>
-                        <div className="space-y-3">{cv.formations.map((f,i)=><div key={i} className="flex gap-3"><div className="w-1.5 h-1.5 rounded-full bg-violet-400 mt-2"/><div><p className="font-semibold text-slate-800 text-sm">{f.diplome}{f.domaine?` en ${f.domaine}`:''}</p><p className="text-xs text-slate-500">{f.etablissement}</p><p className="text-xs text-slate-400 mt-0.5">{fmt(f.dateDebut)} — {f.enCours?'en cours':fmt(f.dateFin)}</p></div></div>)}</div>
+                      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                          <GraduationCap className="w-3.5 h-3.5" /> Formation
+                        </h3>
+                        <div className="space-y-3">
+                          {cv.formations.map((f, i) => (
+                            <div key={i} className="flex gap-3">
+                              <div className="w-1.5 h-1.5 rounded-full bg-violet-400 mt-2 shrink-0" />
+                              <div>
+                                <p className="font-semibold text-slate-800 text-sm">{f.diplome}{f.domaine ? ` en ${f.domaine}` : ''}</p>
+                                <p className="text-xs text-slate-500">{f.etablissement}</p>
+                                <p className="text-xs text-slate-400 mt-0.5">
+                                  {fmt(f.dateDebut)} — {f.enCours ? 'en cours' : fmt(f.dateFin)}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
+
                     {cv.langues?.length > 0 && (
-                      <div className="bg-white p-5 rounded-2xl shadow-sm">
-                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2"><Globe className="w-3.5 h-3.5" /> Langues</h3>
-                        <div className="flex flex-wrap gap-2">{cv.langues.map((l,i)=><span key={i} className={`px-3 py-1 rounded-lg text-xs font-medium ${niveauColor[l.niveau] || 'bg-slate-100 text-slate-600'}`}>{l.langue} · {l.niveau}</span>)}</div>
+                      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                          <Globe className="w-3.5 h-3.5" /> Langues
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                          {cv.langues.map((l, i) => (
+                            <span key={i} className={`px-3 py-1 rounded-lg text-xs font-medium ${niveauColor[l.niveau] || 'bg-slate-100 text-slate-600'}`}>
+                              {l.langue} · {l.niveau}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </>
                 ) : (
-                  <div className="bg-white p-5 rounded-2xl border border-dashed text-center text-slate-400"><FileText className="w-8 h-8 mx-auto mb-2 text-slate-300" /> Aucun CV renseigné</div>
+                  <div className="bg-white p-5 rounded-2xl border border-dashed border-slate-200 text-center text-slate-400 text-sm">
+                    <FileText className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                    Aucun CV renseigné
+                  </div>
                 )}
               </div>
+
+              {/* RIGHT: Actions */}
               <div className="space-y-4">
-                <div className="bg-white p-5 rounded-2xl shadow-sm">
+                {/* Status */}
+                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Statut candidature</h3>
-                  <select value={status} disabled={saving} onChange={e=>handleStatusChange(e.target.value)} className={`w-full px-4 py-3 rounded-xl border-2 font-bold outline-none cursor-pointer transition-colors text-sm ${s.color}`}>
-                    {STATUTS.map(st=><option key={st} value={st}>{STATUT_LABEL[st].label}</option>)}
+                  <select value={status} disabled={saving}
+                    onChange={e => handleStatusChange(e.target.value)}
+                    className={`w-full px-4 py-3 rounded-xl border-2 font-bold outline-none cursor-pointer transition-colors text-sm ${s.color}`}>
+                    {STATUTS.map(st => (
+                      <option key={st} value={st}>{STATUT_LABEL[st].label}</option>
+                    ))}
                   </select>
-                  {saving && <p className="text-xs text-slate-400 mt-1.5 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Mise à jour…</p>}
+                  {saving && (
+                    <p className="text-xs text-slate-400 mt-1.5 flex items-center gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Mise à jour…
+                    </p>
+                  )}
                 </div>
-                {candidature.matchScore != null && (
-                  <div className="bg-white p-5 rounded-2xl shadow-sm text-center">
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Score IA</p>
-                    <ScoreBadge score={candidature.matchScore} />
-                    <p className="text-xs text-slate-400 mt-1">{candidature.typePostulation === 'matching' ? 'Via matching IA' : 'Candidature manuelle'}</p>
+
+                {/* ── AI Score card ── */}
+                {candidature.matchScore != null ? (
+                  <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Score IA</h3>
+                    <div className="flex items-center gap-3">
+                      {/* Colour-coded ring */}
+                      <div className={`w-14 h-14 rounded-full border-4 flex flex-col items-center justify-center shrink-0 ${
+                        candidature.matchScore >= 80 ? 'border-green-300'
+                        : candidature.matchScore >= 60 ? 'border-amber-300'
+                        : 'border-red-300'
+                      }`}>
+                        <span className={`text-sm font-black leading-none ${
+                          candidature.matchScore >= 80 ? 'text-green-600'
+                          : candidature.matchScore >= 60 ? 'text-amber-600'
+                          : 'text-red-500'
+                        }`}>
+                          {candidature.matchScore}%
+                        </span>
+                      </div>
+                      <div>
+                        <p className={`text-sm font-bold ${
+                          candidature.matchScore >= 80 ? 'text-green-700'
+                          : candidature.matchScore >= 60 ? 'text-amber-700'
+                          : 'text-red-600'
+                        }`}>
+                          {candidature.matchScore >= 80 ? 'Excellent match'
+                           : candidature.matchScore >= 60 ? 'Bon match'
+                           : 'Match faible'}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-0.5">Calculé par l'IA</p>
+                      </div>
+                    </div>
+                    {/* Progress bar */}
+                    <div className="mt-3 h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          candidature.matchScore >= 80 ? 'bg-green-400'
+                          : candidature.matchScore >= 60 ? 'bg-amber-400'
+                          : 'bg-red-400'
+                        }`}
+                        style={{ width: `${candidature.matchScore}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-slate-400 mt-2 text-center">
+                      Via matching IA
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Type de candidature</h3>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600">
+                      Candidature manuelle
+                    </span>
                   </div>
                 )}
+
+                {/* Interview info */}
                 {candidature.entretien?.dateEntretien && (
-                  <div className="bg-blue-50 p-4 rounded-2xl border border-blue-200">
-                    <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1 flex items-center gap-1"><Calendar className="w-3 h-3" /> Entretien planifié</p>
-                    <p className="text-sm font-semibold text-blue-800">{new Date(candidature.entretien.dateEntretien).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})}</p>
-                    {candidature.entretien.feedbackRecruteur && <p className="text-xs text-blue-600 mt-1 italic">"{candidature.entretien.feedbackRecruteur}"</p>}
+                  <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+                    <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1 flex items-center gap-1">
+                      <Calendar className="w-3 h-3" /> Entretien planifié
+                    </p>
+                    <p className="text-sm font-semibold text-blue-800">
+                      {new Date(candidature.entretien.dateEntretien).toLocaleDateString('fr-FR', {
+                        weekday: 'long', day: 'numeric', month: 'long',
+                        hour: '2-digit', minute: '2-digit',
+                      })}
+                    </p>
+                    {candidature.entretien.feedbackRecruteur && (
+                      <p className="text-xs text-blue-600 mt-1 italic">"{candidature.entretien.feedbackRecruteur}"</p>
+                    )}
                   </div>
                 )}
+
+                {/* Action buttons */}
                 <div className="space-y-2">
-                  <button onClick={()=>setEntretienModal(true)} className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-xl font-bold transition-all shadow-md text-sm">
-                    <Calendar className="w-4 h-4" /> {candidature.entretien?.dateEntretien ? "Modifier l'entretien" : 'Planifier un entretien'}
+                  <button
+                    onClick={() => setEntretienModal(true)}
+                    className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-xl font-bold transition-all shadow-lg shadow-indigo-200 text-sm">
+                    <Calendar className="w-4 h-4" />
+                    {candidature.entretien?.dateEntretien ? "Modifier l'entretien" : 'Planifier un entretien'}
                   </button>
-                  <button onClick={()=>navigate(`/user/${candidat._id}`)} className="w-full flex items-center justify-center gap-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-4 py-3 rounded-xl font-semibold transition-all text-sm">
+                  <button
+                    onClick={() => navigate(`/user/${candidat._id}`)}
+                    className="w-full flex items-center justify-center gap-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 px-4 py-3 rounded-xl font-semibold transition-all text-sm">
                     <ExternalLink className="w-4 h-4" /> Voir le profil public
                   </button>
                 </div>
               </div>
+
             </div>
           </div>
         </div>
       </div>
-      <PlanifierEntretienModal isOpen={entretienModal} onClose={()=>setEntretienModal(false)} candidatureId={candidature._id} candidatName={`${candidat.prenom||''} ${candidat.nom||''}`.trim()} onSuccess={()=>{handleStatusChange('convocationEntretien'); setEntretienModal(false);}} />
+
+      <PlanifierEntretienModal
+        isOpen={entretienModal}
+        onClose={() => setEntretienModal(false)}
+        candidatureId={candidature._id}
+        candidatName={`${candidat.prenom || ''} ${candidat.nom || ''}`.trim()}
+        onSuccess={() => {
+          handleStatusChange('convocationEntretien');
+          setEntretienModal(false);
+        }}
+      />
     </>
   );
 }
