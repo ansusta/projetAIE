@@ -12,7 +12,8 @@ const { verifierFiltrePersonnel } = require('../utils/filtrePersonnel')
 // ─────────────────────────────────────────────────────────────────────────────
 const callAI = async (cvText, jobText) => {
   try {
-    const response = await axios.post('http://localhost:8000/match', {
+    const AI_SERVICE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
+    const response = await axios.post(`${AI_SERVICE_URL}/match`, {
       cv_text  : cvText,
       job_text : jobText
     })
