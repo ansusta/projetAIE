@@ -99,6 +99,7 @@ jobs:
           format: openapi
           target: 'http://localhost:8000/openapi.json'
           fail_action: false
+          artifact_name: 'zap_api_scan'
 
   secret-scan:
     name: 🔑 Secret Scanning (TruffleHog)
