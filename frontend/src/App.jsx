@@ -13,6 +13,9 @@ import RecruiterDashboard     from './pages/RecruiterDashboard';
 import AdminDashboard         from './pages/AdminDashboard';
 import PublicProfile          from './pages/PublicProfile';
 import VerificationPage       from './pages/unverifiedRecruteur';
+import AboutPage            from './pages/AboutPage';
+import FeaturesPage            from './pages/FeaturesPage';
+
 
 function App() {
   return (
@@ -22,6 +25,8 @@ function App() {
         <Route path="/"               element={<LandingPage />} />
         <Route path="/register"       element={<RegisterPage />} />
         <Route path="/login"          element={<LoginPage />} />
+        <Route path="/about"          element={<AboutPage />} />
+        <Route path="/features"          element={<FeaturesPage />} />
         
         {/* Candidate Routes */}
         <Route path="/onboarding"     element={<OnboardingCV />} />

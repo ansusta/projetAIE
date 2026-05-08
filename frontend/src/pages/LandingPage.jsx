@@ -60,8 +60,8 @@ const LandingPage = () => {
         </div>
 
         <nav className="hidden md:flex justify-center gap-12 text-sm font-semibold text-slate-600">
-          <a href="#" className="hover:text-blue-600 transition-colors">Fonctionnalités</a>
-          <a href="#" className="hover:text-blue-600 transition-colors">À propos</a>
+          <Link to="/features" className="hover:text-blue-600 transition-colors">Fonctionnalités</Link>
+          <Link to="/about" className="hover:text-blue-600 transition-colors">À propos</Link>
         </nav>
 
         <div className="flex justify-end items-center gap-2 sm:gap-4">
