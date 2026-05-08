@@ -1,5 +1,5 @@
 const Commentaire = require('../models/commentaire')
-const Utilisateur = require('../models/Utilisateur')
+const Utilisateur = require('../models/utilisateur')
 
 // ── GET /api/commentaires/recruteur/:idRecruteur ──────────────────────────────
 // Public — returns visible comments + average rating

@@ -1,4 +1,4 @@
-const OffreTravail = require('../models/OffreTravail');
+const OffreTravail = require('../models/offreTravail');
 
 // POST /api/offres
 const creerOffre = async (req, res) => {

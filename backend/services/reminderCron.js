@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const Candidature = require('../models/Candidature');
+const Candidature = require('../models/candidature');
 const { createNotification } = require('../utils/notification'); // Adjust path
 
 const scheduleInterviewReminders = () => {

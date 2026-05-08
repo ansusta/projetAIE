@@ -1,5 +1,5 @@
-const CV          = require('../models/CV')
-const Utilisateur = require('../models/Utilisateur')
+const CV          = require('../models/cv')
+const Utilisateur = require('../models/utilisateur')
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/cv

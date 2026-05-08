@@ -1,5 +1,5 @@
 const Signalement = require('../models/signalement')
-const Utilisateur = require('../models/Utilisateur')
+const Utilisateur = require('../models/utilisateur')
 const { createNotification } = require('../utils/notification')
 
 // ── POST /api/signalements/recruteur/:idRecruteur ─────────────────────────────

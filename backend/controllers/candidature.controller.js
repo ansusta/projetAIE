@@ -1,8 +1,8 @@
-const Candidature  = require('../models/Candidature')
-const OffreTravail = require('../models/OffreTravail')
-const Utilisateur  = require('../models/Utilisateur')
+const Candidature  = require('../models/candidature')
+const OffreTravail = require('../models/offreTravail')
+const Utilisateur  = require('../models/utilisateur')
 const { createNotification }      = require('../utils/notification')
-const Match                       = require('../models/Match')
+const Match                       = require('../models/match')
 const { verifierFiltrePersonnel } = require('../utils/filtrePersonnel')
 
 // POST /api/candidatures

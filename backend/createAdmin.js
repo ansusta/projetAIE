@@ -2,7 +2,7 @@ require('dotenv').config()
 const mongoose = require('mongoose')
 const bcrypt = require('bcryptjs')
 const connectDB = require('./config/db')
-const Utilisateur = require('./models/Utilisateur')
+const Utilisateur = require('./models/utilisateur')
 
 const createAdmin = async () => {
   await connectDB()

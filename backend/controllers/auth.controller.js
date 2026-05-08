@@ -1,9 +1,9 @@
 const bcrypt = require('bcryptjs')
 const jwt    = require('jsonwebtoken')
-const Utilisateur = require('../models/Utilisateur')
+const Utilisateur = require('../models/utilisateur')
 const cloudinary  = require('../config/cloud')
 const { Readable } = require('stream')
-const CV = require('../models/CV')
+const CV = require('../models/cv')
 
 // ── Cloudinary stream upload ──────────────────────────────────────────────────
 const streamUpload = (buffer) =>

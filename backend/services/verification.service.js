@@ -11,8 +11,8 @@
 const mongoose = require('mongoose')
 const { GridFSBucket } = require('mongodb')
 const { model: geminiModel } = require('../config/gemini')
-const Document    = require('../models/Document')
-const Utilisateur = require('../models/Utilisateur')
+const Document    = require('../models/document')
+const Utilisateur = require('../models/utilisateur')
 const { createNotification } = require('../utils/notification')
 
 // ── Prompt ────────────────────────────────────────────────────────────────────

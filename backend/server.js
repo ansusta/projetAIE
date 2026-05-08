@@ -1,11 +1,11 @@
 require("dotenv").config();
-require('./models/Utilisateur')
-require('./models/OffreTravail')
-require('./models/Candidature')
-require('./models/Notification')
-require('./models/Document')
-require('./models/Match')
-require('./models/CV')  
+require('./models/utilisateur')
+require('./models/offreTravail')
+require('./models/candidature')
+require('./models/notification')
+require('./models/document')
+require('./models/match')
+require('./models/cv')  
 require('./models/commentaire')   
 require('./models/signalement')  
 const documentRoutes = require('./routes/document.routes')
@@ -13,7 +13,7 @@ const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
 const connectDB = require("./config/db");
-const Utilisateur = require('./models/Utilisateur');
+const Utilisateur = require('./models/utilisateur');
 const authRoutes = require('./routes/auth.routes');
 const offreRoutes = require('./routes/offre.route');
 const candidatureRoutes = require('./routes/candidature.routes');

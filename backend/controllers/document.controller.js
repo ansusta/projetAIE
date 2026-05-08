@@ -1,8 +1,8 @@
 const mongoose = require('mongoose')
 const { Readable } = require('stream')
-const Document = require('../models/Document')
+const Document = require('../models/document')
 const getGridFSBucket = require('../config/gridfs')
-const Utilisateur = require('../models/Utilisateur')
+const Utilisateur = require('../models/utilisateur')
 const { verifyDocument } = require('../services/verification.service')
 
 const pdfParse = require('pdf-extraction')
