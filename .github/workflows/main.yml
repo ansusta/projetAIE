@@ -17,12 +17,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: javascript, python
-          
+
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
 
@@ -31,14 +31,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Run Trivy vulnerability scanner (fs)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: 'fs'
           scan-ref: '.'
           format: 'table'
-          exit-code: '0' 
+          exit-code: '0'
           severity: 'CRITICAL,HIGH'
 
   dast:
@@ -49,7 +49,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -59,52 +59,51 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-          
+
       - name: Install & Start All Services
         run: |
           # 1. Start AI Service (FastAPI)
-          cd ${{ github.workspace }}/aiServices 
+          cd ${{ github.workspace }}/aiServices
           pip install -r requirements.txt
-          # Explicitly bind to 127.0.0.1 to avoid IPv6/IPv4 Docker confusion
-          uvicorn main:app --host 127.0.0.1 --port 8000 &
-          
+          uvicorn main:app --port 8000 &
+
           # 2. Start the Backend (Node)
           cd ${{ github.workspace }}/backend
           npm install
           npm start &
-          
+
           # 3. Start the Frontend (Vite)
           cd ${{ github.workspace }}/frontend
           npm install
           npm run dev -- --port 3000 &
-          
-          # SMART WAIT: Wait for the AI service OpenAPI endpoint to be fully ready (Timeout after 3 minutes)
-          echo "Waiting for AI Service to start up and serve OpenAPI spec..."
-          timeout 180 bash -c 'until curl -f -s http://127.0.0.1:8000/openapi.json > /dev/null; do echo "Waiting for AI API..."; sleep 5; done'
-          echo "AI Service is up and running!"
-          
-          # SMART WAIT: Wait for the Frontend to be fully ready
-          timeout 60 bash -c 'until curl -f -s http://127.0.0.1:3000 > /dev/null; do echo "Waiting for frontend..."; sleep 5; done'
-          echo "Frontend is up and running!"
-          
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for FastAPI on :8000..."
+          timeout 120 bash -c 'until curl -sf http://localhost:8000/openapi.json; do sleep 3; done'
+          echo "✅ FastAPI is up"
+
+          echo "Waiting for Frontend on :3000..."
+          timeout 60 bash -c 'until curl -sf http://localhost:3000; do sleep 3; done'
+          echo "✅ Frontend is up"
+
+          echo "All services ready."
+
       - name: ZAP Baseline Scan (Frontend)
         uses: zaproxy/action-baseline@v0.14.0
         with:
-          target: 'http://127.0.0.1:3000'
+          target: 'http://localhost:3000'
           fail_action: false
           allow_issue_writing: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Clean up previous ZAP reports
-        run: sudo rm -f report_json.json report_md.md report_html.html
 
       - name: ZAP API Scan (AI Service)
         uses: zaproxy/action-api-scan@v0.10.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           format: openapi
-          target: 'http://127.0.0.1:8000/openapi.json'
+          target: 'http://localhost:8000/openapi.json'
           fail_action: false
           artifact_name: 'zap_api_scan'
 
@@ -115,7 +114,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          
+
       - name: TruffleHog OSS
         uses: trufflesecurity/trufflehog@main
         with:
