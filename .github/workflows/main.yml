@@ -26,20 +26,19 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
 
-  sca:
+sca:
     name: 📦 SCA - Trivy (dependencies)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
       - name: Run Trivy vulnerability scanner (fs)
-        uses: aquasecurity/trivy-action@0.24.0
+        # Updated to a modern, safe version with the required 'v' prefix
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: 'fs'
           scan-ref: '.'
           format: 'table'
-          # Changed to 0. Trivy will print the report but won't crash the pipeline.
-          # Change back to '1' later once you fix all your vulnerable dependencies!
           exit-code: '0' 
           severity: 'CRITICAL,HIGH'
 
