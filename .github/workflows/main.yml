@@ -26,7 +26,7 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
 
-sca:
+  sca:
     name: 📦 SCA - Trivy (dependencies)
     runs-on: ubuntu-latest
     steps:
