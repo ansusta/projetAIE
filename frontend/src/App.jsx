@@ -15,6 +15,7 @@ import PublicProfile          from './pages/PublicProfile';
 import VerificationPage       from './pages/unverifiedRecruteur';
 import AboutPage            from './pages/AboutPage';
 import FeaturesPage            from './pages/FeaturesPage';
+import APropos from './pages/Apropos';
 
 
 function App() {
@@ -46,6 +47,13 @@ function App() {
         {/* Shared / General Routes */}
         <Route path="/notifications"  element={<NotificationsPage />} />
         <Route path="/user/:id"       element={<PublicProfile />} />
+
+
+
+
+
+
+          <Route path="/Apropos" element={<APropos />} />
 
         {/* 404 Catch-All Route */}
         <Route path="*" element={

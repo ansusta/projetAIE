@@ -364,30 +364,30 @@ const LandingPage = () => {
             <div>
               <h4 className="text-white font-bold mb-6">Plateforme</h4>
               <ul className="space-y-4 text-sm text-slate-400">
-                <li><a href="#" className="hover:text-blue-400 transition-colors">Comment ça marche</a></li>
-                <li><a href="#" className="hover:text-blue-400 transition-colors">Pour les candidats</a></li>
-                <li><a href="#" className="hover:text-blue-400 transition-colors">Pour les recruteurs</a></li>
-                <li><a href="#" className="hover:text-blue-400 transition-colors">Tarifs</a></li>
+                <li><a href="/Apropos" className="hover:text-blue-400 transition-colors">Comment ça marche</a></li>
+                <li><a href="/Apropos" className="hover:text-blue-400 transition-colors">Pour les candidats</a></li>
+                <li><a href="/Apropos" className="hover:text-blue-400 transition-colors">Pour les recruteurs</a></li>
+                <li><a href="/Apropos" className="hover:text-blue-400 transition-colors">Tarifs</a></li>
               </ul>
             </div>
 
             <div>
               <h4 className="text-white font-bold mb-6">Entreprise</h4>
               <ul className="space-y-4 text-sm text-slate-400">
-                <li><a href="#" className="hover:text-blue-400 transition-colors">À propos</a></li>
-                <li><a href="#" className="hover:text-blue-400 transition-colors">Contact</a></li>
-                <li><a href="#" className="hover:text-blue-400 transition-colors">Blog</a></li>
-                <li><a href="#" className="hover:text-blue-400 transition-colors">Carrières</a></li>
+                <li><a href="/Apropos" className="hover:text-blue-400 transition-colors">À propos</a></li>
+                <li><a href="/Apropos" className="hover:text-blue-400 transition-colors">Contact</a></li>
+                <li><a href="/Apropos" className="hover:text-blue-400 transition-colors">Blog</a></li>
+                <li><a href="/Apropos" className="hover:text-blue-400 transition-colors">Carrières</a></li>
               </ul>
             </div>
 
             <div>
               <h4 className="text-white font-bold mb-6">Légal</h4>
               <ul className="space-y-4 text-sm text-slate-400">
-                <li><a href="#" className="hover:text-blue-400 transition-colors">Confidentialité</a></li>
-                <li><a href="#" className="hover:text-blue-400 transition-colors">Conditions d'utilisation</a></li>
-                <li><a href="#" className="hover:text-blue-400 transition-colors">Mentions légales</a></li>
-                <li><a href="#" className="hover:text-blue-400 transition-colors">Cookies</a></li>
+                <li><a href="/Apropos" className="hover:text-blue-400 transition-colors">Confidentialité</a></li>
+                <li><a href="/Apropos" className="hover:text-blue-400 transition-colors">Conditions d'utilisation</a></li>
+                <li><a href="/Apropos" className="hover:text-blue-400 transition-colors">Mentions légales</a></li>
+                <li><a href="/Apropos" className="hover:text-blue-400 transition-colors">Cookies</a></li>
               </ul>
             </div>
           </div>
