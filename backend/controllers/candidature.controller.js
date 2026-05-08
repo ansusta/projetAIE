@@ -21,13 +21,9 @@ const soumettreCandidature = async (req, res) => {
     const existing = await Candidature.findOne({ idCandidat: req.user._id, idOffre })
     if (existing) return res.status(400).json({ error: 'Already applied to this offer' })
 
-    // ── Personal filter check ─────────────────────────────────────────────────
     const filtreResult = verifierFiltrePersonnel(candidat, offre)
     if (!filtreResult.passe) {
-      return res.status(403).json({
-        error        : filtreResult.raison,
-        filtreEchoue : true
-      })
+      return res.status(403).json({ error: filtreResult.raison, filtreEchoue: true })
     }
 
     const candidature = await Candidature.create({
@@ -38,7 +34,9 @@ const soumettreCandidature = async (req, res) => {
     await createNotification({
       idUtilisateur: offre.idRecruteur,
       contenu:       `Nouvelle candidature reçue pour l'offre "${offre.titre}"`,
-      idCandidature: candidature._id
+      idCandidature: candidature._id,
+      idOffre:       offre._id,
+      type:          'candidature'
     })
 
     res.status(201).json(candidature)
@@ -48,25 +46,25 @@ const soumettreCandidature = async (req, res) => {
 }
 
 // GET /api/candidatures/mes-candidatures
-// GET /api/candidatures/mes-candidatures
 const mesCandidatures = async (req, res) => {
   try {
     const candidatures = await Candidature.find({ idCandidat: req.user._id })
       .populate({
-        path: 'idOffre',
-        select: 'titre localisation typeContrat idRecruteur',
+        path:   'idOffre',
+        // ✅ Inclure statutOffre pour détecter les offres pourvues côté frontend
+        select: 'titre localisation typeContrat idRecruteur statutOffre salaireMin description requis',
         populate: {
-          path: 'idRecruteur',
+          path:   'idRecruteur',
           select: '_id nomEntreprise secteurActivite'
         }
       })
-      .sort({ dateCandidature: -1 });
+      .sort({ dateCandidature: -1 })
 
-    res.json(candidatures);
+    res.json(candidatures)
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message })
   }
-};
+}
 
 // GET /api/candidatures/offre/:offreId  — recruteur sees all applicants
 const candidaturesParOffre = async (req, res) => {
@@ -109,6 +107,33 @@ const getCandidature = async (req, res) => {
   }
 }
 
+// ✅ Notifie tous les candidats non retenus quand un poste est pourvu
+const notifierPostePourvu = async (offreId, candidatEmbaucheId, offreTitre) => {
+  try {
+    // Toutes les candidatures pour cette offre sauf le candidat embauché
+    const autresCandidatures = await Candidature.find({
+      idOffre:    offreId,
+      idCandidat: { $ne: candidatEmbaucheId },
+      etatCandidature: { $nin: ['refusee'] }
+    })
+
+    const notifications = autresCandidatures.map(c => ({
+      idUtilisateur: c.idCandidat,
+      contenu:       `Le poste "${offreTitre}" a été pourvu par un autre candidat.`,
+      idCandidature: c._id,
+      idOffre:       offreId,
+      type:          'postePourvu'
+    }))
+
+    if (notifications.length > 0) {
+      // createNotification une par une pour respecter l'utilitaire existant
+      await Promise.all(notifications.map(n => createNotification(n)))
+    }
+  } catch (err) {
+    console.error('Erreur notification poste pourvu:', err.message)
+  }
+}
+
 // PATCH /api/candidatures/:id/statut
 const mettreAJourStatut = async (req, res) => {
   try {
@@ -128,15 +153,35 @@ const mettreAJourStatut = async (req, res) => {
     const messages = {
       demandeDocSupp:       'Des documents supplémentaires ont été demandés pour votre candidature.',
       convocationEntretien: 'Vous avez été convoqué(e) à un entretien.',
-      Embauchee:            'Félicitations ! Votre candidature a été acceptée.',
-      refusee:              "Votre candidature n'a pas été retenue."
+      Embauchee:            `Félicitations ! Votre candidature pour "${candidature.idOffre.titre}" a été acceptée.`,
+      refusee:              `Votre candidature pour "${candidature.idOffre.titre}" n'a pas été retenue.`
     }
+
+    const types = {
+      demandeDocSupp:       'candidature',
+      convocationEntretien: 'entretien',
+      Embauchee:            'embauche',
+      refusee:              'refus'
+    }
+
     if (messages[etatCandidature]) {
       await createNotification({
         idUtilisateur: candidature.idCandidat,
         contenu:       messages[etatCandidature],
-        idCandidature: candidature._id
+        idCandidature: candidature._id,
+        idOffre:       candidature.idOffre._id,
+        type:          types[etatCandidature]
       })
+    }
+
+    // ✅ Si embauche : fermer l'offre + notifier tous les autres candidats
+    if (etatCandidature === 'Embauchee') {
+      await OffreTravail.findByIdAndUpdate(candidature.idOffre._id, { statutOffre: 'fermer' })
+      await notifierPostePourvu(
+        candidature.idOffre._id,
+        candidature.idCandidat,
+        candidature.idOffre.titre
+      )
     }
 
     res.json(candidature)
@@ -162,8 +207,10 @@ const planifierEntretien = async (req, res) => {
 
     await createNotification({
       idUtilisateur: candidature.idCandidat,
-      contenu:       `Entretien planifié le ${new Date(dateEntretien).toLocaleDateString('fr-FR')}.`,
-      idCandidature: candidature._id
+      contenu:       `Entretien planifié le ${new Date(dateEntretien).toLocaleDateString('fr-FR')} pour "${candidature.idOffre.titre}".`,
+      idCandidature: candidature._id,
+      idOffre:       candidature.idOffre._id,
+      type:          'entretien'
     })
 
     res.json(candidature)
@@ -207,7 +254,7 @@ const getCandidaturesGrouped = async (req, res) => {
   }
 }
 
-// GET /api/candidatures/entretiens — recruteur interview calendar
+// GET /api/candidatures/entretiens
 const getEntretiens = async (req, res) => {
   try {
     const offres   = await OffreTravail.find({ idRecruteur: req.user._id }).select('_id titre')

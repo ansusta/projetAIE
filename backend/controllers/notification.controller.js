@@ -3,10 +3,22 @@ const Notification = require('../models/Notification')
 // GET /api/notifications
 const mesNotifications = async (req, res) => {
   try {
-    const notifications = await Notification.find({ idUtilisateur: req.user._id })
+    const notifs = await Notification.find({ idUtilisateur: req.user._id })
       .sort({ dateEnvoi: -1 })
-      .limit(50)
-    res.json(notifications)
+      // ✅ Populate idCandidature → idOffre pour avoir le titre dans la notif
+      .populate({
+        path: 'idCandidature',
+        select: 'etatCandidature dateCandidature idOffre',
+        populate: {
+          path:   'idOffre',
+          select: 'titre localisation typeContrat statutOffre'
+        }
+      })
+      // ✅ Populate idOffre direct (pour les notifs sans candidature)
+      .populate('idOffre', 'titre localisation typeContrat statutOffre')
+      .lean()
+
+    res.json(notifs)
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -15,14 +27,11 @@ const mesNotifications = async (req, res) => {
 // PATCH /api/notifications/:id/read
 const marquerCommeLu = async (req, res) => {
   try {
-    const notif = await Notification.findById(req.params.id)
-    if (!notif) return res.status(404).json({ error: 'Notification not found' })
-    if (notif.idUtilisateur.toString() !== req.user._id.toString())
-      return res.status(403).json({ error: 'Not your notification' })
-
-    notif.lu = true
-    await notif.save()
-    res.json(notif)
+    await Notification.findOneAndUpdate(
+      { _id: req.params.id, idUtilisateur: req.user._id },
+      { lu: true }
+    )
+    res.json({ success: true })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -31,8 +40,11 @@ const marquerCommeLu = async (req, res) => {
 // PATCH /api/notifications/read-all
 const toutMarquerCommeLu = async (req, res) => {
   try {
-    await Notification.updateMany({ idUtilisateur: req.user._id, lu: false }, { lu: true })
-    res.json({ message: 'All notifications marked as read' })
+    await Notification.updateMany(
+      { idUtilisateur: req.user._id, lu: false },
+      { lu: true }
+    )
+    res.json({ success: true })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }

@@ -27,6 +27,7 @@ const app = express();
 const scheduleInterviewReminders = require('./services/reminderCron');
 
 
+
 app.use(cors());
 app.use(express.json());
 connectDB();
