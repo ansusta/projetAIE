@@ -1,13 +1,35 @@
 // src/utils/validation.js
 
-// Email valide (format standard + domaines réalistes)
+// Liste des domaines email autorisés
+const ALLOWED_DOMAINS = [
+  'gmail.com',
+  'yahoo.com',
+  'yahoo.fr',
+  'hotmail.com',
+  'hotmail.fr',
+  'outlook.com',
+  'outlook.fr',
+  'live.com',
+  'live.fr',
+  'icloud.com',
+  'protonmail.com',
+  'proton.me',
+  'mail.com',
+  'orange.fr',
+  'sfr.fr',
+  'free.fr',
+  'laposte.net'
+];
+
+// Email valide : format standard + domaine autorisé
 export const isValidEmail = (email) => {
-  const re = /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/;
-  if (!re.test(email)) return false;
-  // Optionnel : bloquer les domaines factices
-  const invalidDomains = ['example.com', 'test.fr', 'fake.org'];
-  const domain = email.split('@')[1];
-  return !invalidDomains.includes(domain);
+  if (!email || typeof email !== 'string') return false;
+  const trimmed = email.trim().toLowerCase();
+  const re = /^[^\s@]+@([^\s@]+)$/;
+  const match = trimmed.match(re);
+  if (!match) return false;
+  const domain = match[1];
+  return ALLOWED_DOMAINS.includes(domain);
 };
 
 // Mot de passe fort : min 8 caractères, 1 maj, 1 min, 1 chiffre, 1 caractère spécial
