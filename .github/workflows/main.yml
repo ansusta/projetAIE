@@ -54,23 +54,33 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
           
-      - name: Install dependencies & start application
+      - name: Install & Start All Services
         run: |
-          # 1. Start the Backend
-          cd backend
+          # 1. Start AI Service (FastAPI)
+          cd ai-service 
+          pip install -r requirements.txt
+          uvicorn main:app --port 8000 &
+          
+          # 2. Start the Backend (Node)
+          cd ../backend
           npm install
           npm start &
           
-          # 2. Start the Frontend (Vite)
+          # 3. Start the Frontend (Vite)
           cd ../frontend
           npm install
           npm run dev -- --port 3000 &
           
-          # Give both servers 15 seconds to fully boot up
-          sleep 15
+          # Grace period for AI model weights to download/load
+          sleep 30
           
-      - name: ZAP Baseline Scan
+      - name: ZAP Baseline Scan (Frontend)
         uses: zaproxy/action-baseline@v0.14.0
         with:
           target: 'http://localhost:3000'
@@ -78,6 +88,14 @@ jobs:
           allow_issue_writing: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: ZAP API Scan (AI Service)
+        uses: zaproxy/action-api-scan@v0.7.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          format: openapi
+          target: 'http://localhost:8000/openapi.json'
+          fail_action: false
 
   secret-scan:
     name: 🔑 Secret Scanning (TruffleHog)
