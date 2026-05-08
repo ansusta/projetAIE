@@ -24,6 +24,8 @@ export default function AdminDashboard() {
   const [selectedDossier, setSelectedDossier] = useState(null);
   const [isLoading, setIsLoading]           = useState(true);
   const [docToView, setDocToView]           = useState(null);
+  const [docUrl, setDocUrl]                 = useState(null);
+  const [docLoading, setDocLoading]         = useState(false);
 
   // Rejection modal state
   const [rejectModal, setRejectModal]       = useState(false);
@@ -35,6 +37,8 @@ export default function AdminDashboard() {
   const [dossierComments, setDossierComments]     = useState([]);
   const [commentsLoading, setCommentsLoading]     = useState(false);
   const [commentsShown, setCommentsShown]         = useState(false);
+
+  
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('token');
@@ -219,6 +223,40 @@ export default function AdminDashboard() {
     if (activeTab === 'users')      fetchUsers();
     // signalements tab is handled by the AdminSignalements component itself
   }, [activeTab]);
+  useEffect(() => {
+    let objectUrl = null;
+
+    if (docToView?.fileId) {
+      setDocLoading(true);
+      fetch(`http://localhost:5000/api/documents/file/${docToView.fileId}`, {
+        headers: getAuthHeaders(), // <--- This injects your Admin Token securely!
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error('Erreur de chargement');
+          return res.blob();
+        })
+        .then((blob) => {
+          // Explicitly define the mime type for PDFs to render correctly in the iframe
+          const finalBlob = new Blob([blob], { type: docToView.formatFichier || blob.type });
+          objectUrl = URL.createObjectURL(finalBlob);
+          setDocUrl(objectUrl);
+        })
+        .catch((e) => {
+          console.error(e);
+          toast.error('Impossible de charger le document');
+        })
+        .finally(() => {
+          setDocLoading(false);
+        });
+    } else {
+      setDocUrl(null);
+    }
+
+    // Cleanup memory when closing the modal
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [docToView]);
 
   // ── AI verdict helpers ───────────────────────────────────────────────────────
   const verdictConfig = {
@@ -1044,6 +1082,7 @@ const renderOverview = () => {
       )}
 
       {/* ── Document viewer modal ── */}
+{/* ── Document viewer modal ── */}
       {docToView && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl flex flex-col overflow-hidden max-h-[90vh]">
@@ -1069,28 +1108,42 @@ const renderOverview = () => {
                 <X className="w-5 h-5" />
               </button>
             </div>
+            
+            {/* --- UPDATED VIEWER AREA --- */}
             <div className="flex-1 bg-slate-100 p-4 overflow-auto min-h-[50vh] flex items-center justify-center">
-              {docToView.fileId ? (
+              {!docToView.fileId ? (
+                <div className="text-center text-slate-400 flex flex-col items-center">
+                  <AlertTriangle className="w-12 h-12 mb-3 text-slate-300" />
+                  <p className="font-medium text-slate-500">Fichier introuvable.</p>
+                </div>
+              ) : docLoading ? (
+                <div className="text-center text-indigo-500 flex flex-col items-center">
+                  <Loader2 className="w-10 h-10 mb-3 animate-spin" />
+                  <p className="font-medium text-slate-500">Chargement sécurisé du document...</p>
+                </div>
+              ) : docUrl ? (
                 docToView.formatFichier?.startsWith('image/') ? (
                   <img
-                    src={`http://localhost:5000/api/documents/file/${docToView.fileId}`}
+                    src={docUrl}
                     alt={docToView.nomFichier}
                     className="max-w-full max-h-full rounded-lg shadow-sm border border-slate-200"
                   />
                 ) : (
                   <iframe
-                    src={`http://localhost:5000/api/documents/file/${docToView.fileId}`}
+                    src={docUrl}
                     title="Visionneuse de document"
                     className="w-full h-full min-h-[60vh] rounded-xl border border-slate-200 bg-white shadow-sm"
                   />
                 )
               ) : (
-                <div className="text-center text-slate-400 flex flex-col items-center">
-                  <AlertTriangle className="w-12 h-12 mb-3 text-slate-300" />
-                  <p className="font-medium text-slate-500">Fichier introuvable.</p>
+                <div className="text-center text-red-400 flex flex-col items-center">
+                  <AlertTriangle className="w-12 h-12 mb-3" />
+                  <p className="font-medium">Échec du chargement.</p>
                 </div>
               )}
             </div>
+            {/* --- END OF UPDATED VIEWER AREA --- */}
+
             <div className="p-4 border-t border-slate-100 bg-white flex justify-end">
               <button onClick={() => setDocToView(null)} className="px-6 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm transition-colors">
                 Fermer

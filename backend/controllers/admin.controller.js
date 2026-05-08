@@ -30,11 +30,15 @@ const listerUtilisateurs = async (req, res) => {
 }
 
 // ── GET /api/admin/users/recruteurs/en-attente ────────────────────────────────
+// FIX: Also include 'refuse' recruiters who have re-uploaded docs (demandeResoumise flag)
 const recruteursEnAttente = async (req, res) => {
   try {
     const users = await Utilisateur.find({
       role: 'recruteur',
-      etatValidation: { $in: ['enAttente', 'valideParIA'] },
+      $or: [
+        { etatValidation: { $in: ['enAttente', 'valideParIA'] } },
+        { etatValidation: 'refuse', demandeResoumise: true },
+      ],
     })
       .select('-motDePasse')
       .sort({ dateCreation: -1 })
@@ -56,8 +60,6 @@ const getUtilisateur = async (req, res) => {
 }
 
 // ── GET /api/admin/recruteurs/:id/dossier ─────────────────────────────────────
-// Returns the recruiter profile + all their uploaded documents with AI verdicts.
-// This is the main admin review screen.
 const getRecruteurDossier = async (req, res) => {
   try {
     const recruteur = await Utilisateur.findById(req.params.id).select('-motDePasse')
@@ -69,13 +71,12 @@ const getRecruteurDossier = async (req, res) => {
       type:        'docrecruteur',
     }).sort({ dateUpload: -1 })
 
-    // Summary stats for the admin
     const aiSummary = {
-      total:              documents.length,
-      approuves:          documents.filter(d => d.aiVerification?.verdict === 'approuve').length,
-      rejetes:            documents.filter(d => d.aiVerification?.verdict === 'rejete').length,
-      enAttente:          documents.filter(d => !d.aiVerification).length,
-      necessiteRevision:  documents.filter(d => d.aiVerification?.verdict === 'necessiteRevision').length,
+      total:             documents.length,
+      approuves:         documents.filter(d => d.aiVerification?.verdict === 'approuve').length,
+      rejetes:           documents.filter(d => d.aiVerification?.verdict === 'rejete').length,
+      enAttente:         documents.filter(d => !d.aiVerification).length,
+      necessiteRevision: documents.filter(d => d.aiVerification?.verdict === 'necessiteRevision').length,
     }
 
     res.json({ recruteur, documents, aiSummary })
@@ -85,7 +86,7 @@ const getRecruteurDossier = async (req, res) => {
 }
 
 // ── PATCH /api/admin/users/:id/validate ──────────────────────────────────────
-// body: { decision: 'valideParAdmin' | 'refuse', motif?: string }
+// FIX: Clear demandeResoumise flag when admin makes a final decision
 const validerRecruteur = async (req, res) => {
   try {
     const { decision, motif } = req.body
@@ -93,14 +94,14 @@ const validerRecruteur = async (req, res) => {
       return res.status(400).json({ error: "decision must be 'valideParAdmin' or 'refuse'" })
 
     const user = await Utilisateur.findById(req.params.id)
-    if (!user)                return res.status(404).json({ error: 'User not found' })
+    if (!user)                     return res.status(404).json({ error: 'User not found' })
     if (user.role !== 'recruteur') return res.status(400).json({ error: 'Not a recruiter' })
 
-    user.etatValidation = decision
-    user.motifRefus = decision === 'refuse' ? (motif || null) : null
+    user.etatValidation  = decision
+    user.motifRefus      = decision === 'refuse' ? (motif || null) : null
+    user.demandeResoumise = false   // clear the re-apply flag after admin decision
     await user.save()
 
-    // Mark all their docs as verified
     if (decision === 'valideParAdmin') {
       await Document.updateMany(
         { idRecruteur: user._id, type: 'docrecruteur' },
@@ -115,7 +116,7 @@ const validerRecruteur = async (req, res) => {
     await createNotification({ idUtilisateur: user._id, contenu: notifMsg })
 
     res.json({
-      message: `Recruiter ${decision === 'valideParAdmin' ? 'validated' : 'rejected'}`,
+      message:       `Recruiter ${decision === 'valideParAdmin' ? 'validated' : 'rejected'}`,
       etatValidation: decision,
     })
   } catch (err) {
@@ -124,7 +125,6 @@ const validerRecruteur = async (req, res) => {
 }
 
 // ── POST /api/admin/documents/:docId/re-verify ────────────────────────────────
-// Admin manually re-runs AI verification on a specific document
 const reVerifyDocument = async (req, res) => {
   try {
     const doc = await Document.findById(req.params.docId)
@@ -197,21 +197,15 @@ const toutesLesCandidatures = async (req, res) => {
   }
 }
 
-
 const getDashboardStats = async (req, res) => {
   try {
-    const now = new Date();
-    const day30 = new Date(now - 30 * 24 * 60 * 60 * 1000);
-    const day7 = new Date(now - 7 * 24 * 60 * 60 * 1000);
+    const now   = new Date()
+    const day30 = new Date(now - 30 * 24 * 60 * 60 * 1000)
+    const day7  = new Date(now - 7  * 24 * 60 * 60 * 1000)
 
-    // ── 1. Basic counts ─────────────────────────────────────────────────
     const [
-      totalCandidats,
-      totalRecruteurs,
-      comptesBloques,
-      recruteursEnAttenteCount,
-      recruteursValideParIA,
-      newUsersLast30d,
+      totalCandidats, totalRecruteurs, comptesBloques,
+      recruteursEnAttenteCount, recruteursValideParIA, newUsersLast30d,
     ] = await Promise.all([
       Utilisateur.countDocuments({ role: 'candidat' }),
       Utilisateur.countDocuments({ role: 'recruteur' }),
@@ -219,306 +213,145 @@ const getDashboardStats = async (req, res) => {
       Utilisateur.countDocuments({ role: 'recruteur', etatValidation: 'enAttente' }),
       Utilisateur.countDocuments({ role: 'recruteur', etatValidation: 'valideParIA' }),
       Utilisateur.countDocuments({ dateCreation: { $gte: day30 } }),
-    ]);
+    ])
 
-    const [
-      totalOffres,
-      offresOuvertes,
-      offresFermees,
-      newOffresLast30d,
-    ] = await Promise.all([
+    const [totalOffres, offresOuvertes, offresFermees, newOffresLast30d] = await Promise.all([
       OffreTravail.countDocuments(),
       OffreTravail.countDocuments({ statutOffre: 'ouvert' }),
       OffreTravail.countDocuments({ statutOffre: 'fermer' }),
       OffreTravail.countDocuments({ datePublication: { $gte: day30 } }),
-    ]);
+    ])
 
-    const [
-      totalCandidatures,
-      candidaturesLast7d,
-      candidaturesParStatut,
-    ] = await Promise.all([
+    const [totalCandidatures, candidaturesLast7d, candidaturesParStatut] = await Promise.all([
       Candidature.countDocuments(),
       Candidature.countDocuments({ dateCandidature: { $gte: day7 } }),
-      Candidature.aggregate([
-        { $group: { _id: '$etatCandidature', count: { $sum: 1 } } },
-      ]),
-    ]);
+      Candidature.aggregate([{ $group: { _id: '$etatCandidature', count: { $sum: 1 } } }]),
+    ])
 
-    // AI verification stats
     const aiDocStats = await Document.aggregate([
       { $match: { type: 'docrecruteur' } },
       { $group: { _id: '$aiVerification.verdict', count: { $sum: 1 } } },
-    ]);
-    const aiVerifSummary = { approuves: 0, rejetes: 0, necessiteRevision: 0, nonVerifies: 0 };
+    ])
+    const aiVerifSummary = { approuves: 0, rejetes: 0, necessiteRevision: 0, nonVerifies: 0 }
     for (const s of aiDocStats) {
-      if (s._id === 'approuve') aiVerifSummary.approuves += s.count;
-      else if (s._id === 'rejete') aiVerifSummary.rejetes += s.count;
-      else if (s._id === 'necessiteRevision') aiVerifSummary.necessiteRevision += s.count;
-      else aiVerifSummary.nonVerifies += s.count;
+      if      (s._id === 'approuve')          aiVerifSummary.approuves          += s.count
+      else if (s._id === 'rejete')            aiVerifSummary.rejetes            += s.count
+      else if (s._id === 'necessiteRevision') aiVerifSummary.necessiteRevision  += s.count
+      else                                    aiVerifSummary.nonVerifies        += s.count
     }
 
-    // ── 2. Hottest offers ───────────────────────────────────────────────
-    // 2a. Most applications in last 30 days
     const offresPopulaires = await Candidature.aggregate([
       { $match: { dateCandidature: { $gte: day30 } } },
       { $group: { _id: '$idOffre', total: { $sum: 1 } } },
       { $sort: { total: -1 } },
       { $limit: 5 },
-      {
-        $lookup: { from: 'offretravails', localField: '_id', foreignField: '_id', as: 'offre' },
-      },
+      { $lookup: { from: 'offretravails', localField: '_id', foreignField: '_id', as: 'offre' } },
       { $unwind: '$offre' },
-      {
-        $project: {
-          _id: 0,
-          offreId: '$_id',
-          titre: '$offre.titre',
-          localisation: '$offre.localisation',
-          typeContrat: '$offre.typeContrat',
-          totalCandidatures: '$total',
-        },
-      },
-    ]);
+      { $project: { _id: 0, offreId: '$_id', titre: '$offre.titre', localisation: '$offre.localisation', typeContrat: '$offre.typeContrat', totalCandidatures: '$total' } },
+    ])
 
-    // 2b. Best matching offers (highest average AI score)
     const offresLesPlusMatchées = await Match.aggregate([
-      {
-        $group: {
-          _id: '$idOffre',
-          avgScore: { $avg: '$score' },
-          totalMatchs: { $sum: 1 },
-        },
-      },
+      { $group: { _id: '$idOffre', avgScore: { $avg: '$score' }, totalMatchs: { $sum: 1 } } },
       { $sort: { avgScore: -1 } },
       { $limit: 5 },
-      {
-        $lookup: { from: 'offretravails', localField: '_id', foreignField: '_id', as: 'offre' },
-      },
+      { $lookup: { from: 'offretravails', localField: '_id', foreignField: '_id', as: 'offre' } },
       { $unwind: '$offre' },
-      {
-        $project: {
-          _id: 0,
-          offreId: '$_id',
-          titre: '$offre.titre',
-          avgScore: { $round: [{ $multiply: ['$avgScore', 100] }, 1] }, // percentage
-          totalMatchs: 1,
-        },
-      },
-    ]);
+      { $project: { _id: 0, offreId: '$_id', titre: '$offre.titre', avgScore: { $round: [{ $multiply: ['$avgScore', 100] }, 1] }, totalMatchs: 1 } },
+    ])
 
- const recruteursAvecEmbauche = await Candidature.aggregate([
-      // bring in the offer to get the recruiter id
-      {
-        $lookup: {
-          from: 'offretravails',
-          localField: 'idOffre',
-          foreignField: '_id',
-          as: 'offre',
-        },
-      },
+    const recruteursAvecEmbauche = await Candidature.aggregate([
+      { $lookup: { from: 'offretravails', localField: 'idOffre', foreignField: '_id', as: 'offre' } },
       { $unwind: '$offre' },
-      // group by the recruiter
-      {
-        $group: {
-          _id: '$offre.idRecruteur',
-          totalCandidatures: { $sum: 1 },
-          embauchees: {
-            $sum: { $cond: [{ $eq: ['$etatCandidature', 'Embauchee'] }, 1, 0] },
-          },
-        },
-      },
-      // only include recruiters with at least 1 application
+      { $group: { _id: '$offre.idRecruteur', totalCandidatures: { $sum: 1 }, embauchees: { $sum: { $cond: [{ $eq: ['$etatCandidature', 'Embauchee'] }, 1, 0] } } } },
       { $match: { totalCandidatures: { $gt: 0 } } },
-      {
-        $addFields: {
-          ratioEmbauche: {
-            $divide: ['$embauchees', '$totalCandidatures'],
-          },
-        },
-      },
+      { $addFields: { ratioEmbauche: { $divide: ['$embauchees', '$totalCandidatures'] } } },
       { $sort: { ratioEmbauche: -1 } },
       { $limit: 5 },
-      // lookup the recruiter details
-      {
-        $lookup: {
-          from: 'utilisateurs',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'recruteur',
-        },
-      },
+      { $lookup: { from: 'utilisateurs', localField: '_id', foreignField: '_id', as: 'recruteur' } },
       { $unwind: '$recruteur' },
-      {
-        $project: {
-          _id: 0,
-          recruteurId: '$_id',
-          nomEntreprise: '$recruteur.nomEntreprise',
-          email: '$recruteur.email',
-          totalCandidatures: 1,
-          embauchees: 1,
-          ratioEmbauche: {
-            $round: [{ $multiply: ['$ratioEmbauche', 100] }, 1],
-          },
-        },
-      },
-    ]);
+      { $project: { _id: 0, recruteurId: '$_id', nomEntreprise: '$recruteur.nomEntreprise', email: '$recruteur.email', totalCandidatures: 1, embauchees: 1, ratioEmbauche: { $round: [{ $multiply: ['$ratioEmbauche', 100] }, 1] } } },
+    ])
 
-    // ── 3. Candidate engagement ─────────────────────────────────────────
     const candidatEngagement = await Candidature.aggregate([
       { $group: { _id: '$idCandidat', totalApplications: { $sum: 1 } } },
-    ]);
-    const totalCandidatsActifs = candidatEngagement.length;
-    const moyCandidaturesParCandidat =
-      totalCandidatsActifs > 0
-        ? +(candidatEngagement.reduce((sum, c) => sum + c.totalApplications, 0) / totalCandidatsActifs).toFixed(1)
-        : 0;
+    ])
+    const totalCandidatsActifs = candidatEngagement.length
+    const moyCandidaturesParCandidat = totalCandidatsActifs > 0
+      ? +(candidatEngagement.reduce((sum, c) => sum + c.totalApplications, 0) / totalCandidatsActifs).toFixed(1)
+      : 0
 
     const topCandidats = await Candidature.aggregate([
       { $group: { _id: '$idCandidat', totalApplications: { $sum: 1 } } },
       { $sort: { totalApplications: -1 } },
       { $limit: 5 },
-      {
-        $lookup: { from: 'utilisateurs', localField: '_id', foreignField: '_id', as: 'candidat' },
-      },
+      { $lookup: { from: 'utilisateurs', localField: '_id', foreignField: '_id', as: 'candidat' } },
       { $unwind: '$candidat' },
-      {
-        $project: {
-          _id: 0,
-          candidatId: '$_id',
-          nom: '$candidat.nom',
-          prenom: '$candidat.prenom',
-          email: '$candidat.email',
-          totalApplications: 1,
-        },
-      },
-    ]);
+      { $project: { _id: 0, candidatId: '$_id', nom: '$candidat.nom', prenom: '$candidat.prenom', email: '$candidat.email', totalApplications: 1 } },
+    ])
 
-    // ── 4. Commentaires snapshot ────────────────────────────────────────
     const [commentairesTotal, noteMoyenne, hiddenCount] = await Promise.all([
       Commentaire.countDocuments(),
-      Commentaire.aggregate([
-        { $group: { _id: null, avg: { $avg: '$note' } } },
-      ]),
+      Commentaire.aggregate([{ $group: { _id: null, avg: { $avg: '$note' } } }]),
       Commentaire.countDocuments({ visible: false }),
-    ]);
+    ])
     const commentaires = {
       total: commentairesTotal,
       noteMoyenne: noteMoyenne[0] ? +noteMoyenne[0].avg.toFixed(2) : 0,
       hidden: hiddenCount,
-    };
+    }
 
-    // ── 5. Gender distribution ──────────────────────────────────────────
-    const genreCandidats = await Utilisateur.aggregate([
-      { $match: { role: 'candidat' } },
-      { $group: { _id: '$genre', count: { $sum: 1 } } },
-    ]);
-    const genreRecruteurs = await Utilisateur.aggregate([
-      { $match: { role: 'recruteur' } },
-      { $group: { _id: { $ifNull: ['$genre', 'nonSpecifie'] }, count: { $sum: 1 } } },
-    ]);
+    const genreCandidats  = await Utilisateur.aggregate([{ $match: { role: 'candidat' } },  { $group: { _id: '$genre', count: { $sum: 1 } } }])
+    const genreRecruteurs = await Utilisateur.aggregate([{ $match: { role: 'recruteur' } }, { $group: { _id: { $ifNull: ['$genre', 'nonSpecifie'] }, count: { $sum: 1 } } }])
     const genreDistribution = {
-      candidats: Object.fromEntries(genreCandidats.map(g => [g._id || 'nonSpecifie', g.count])),
+      candidats:  Object.fromEntries(genreCandidats.map(g  => [g._id || 'nonSpecifie', g.count])),
       recruteurs: Object.fromEntries(genreRecruteurs.map(g => [g._id, g.count])),
-    };
+    }
 
-    // ── 6. AI match summary ────────────────────────────────────────────
     const matchStats = await Match.aggregate([
-      {
-        $group: {
-          _id: null,
-          avgScore: { $avg: '$score' },
-          totalMatchs: { $sum: 1 },
-          highMatches: { $sum: { $cond: [{ $gte: ['$score', 0.75] }, 1, 0] } },
-        },
-      },
-    ]);
+      { $group: { _id: null, avgScore: { $avg: '$score' }, totalMatchs: { $sum: 1 }, highMatches: { $sum: { $cond: [{ $gte: ['$score', 0.75] }, 1, 0] } } } },
+    ])
 
-    // ── 7. User growth ──────────────────────────────────────────────────
     const userGrowth = await Utilisateur.aggregate([
       { $match: { dateCreation: { $gte: day30 } } },
-      {
-        $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$dateCreation' } },
-          count: { $sum: 1 },
-        },
-      },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$dateCreation' } }, count: { $sum: 1 } } },
       { $sort: { _id: 1 } },
       { $project: { _id: 0, date: '$_id', count: 1 } },
-    ]);
+    ])
 
-    // ── 8. Top recruiters (most open offers) ────────────────────────────
     const topRecruteurs = await OffreTravail.aggregate([
       { $match: { statutOffre: 'ouvert' } },
       { $group: { _id: '$idRecruteur', totalOffres: { $sum: 1 } } },
       { $sort: { totalOffres: -1 } },
       { $limit: 5 },
-      {
-        $lookup: { from: 'utilisateurs', localField: '_id', foreignField: '_id', as: 'recruteur' },
-      },
+      { $lookup: { from: 'utilisateurs', localField: '_id', foreignField: '_id', as: 'recruteur' } },
       { $unwind: '$recruteur' },
-      {
-        $project: {
-          _id: 0,
-          recruteurId: '$_id',
-          nomEntreprise: '$recruteur.nomEntreprise',
-          secteurActivite: '$recruteur.secteurActivite',
-          totalOffres: 1,
-        },
-      },
-    ]);
+      { $project: { _id: 0, recruteurId: '$_id', nomEntreprise: '$recruteur.nomEntreprise', secteurActivite: '$recruteur.secteurActivite', totalOffres: 1 } },
+    ])
 
-    // ── Final response ──────────────────────────────────────────────────
     res.json({
-      users: {
-        totalCandidats,
-        totalRecruteurs,
-        comptesBloques,
-        recruteursEnAttente: recruteursEnAttenteCount,
-        recruteursValideParIA,
-        newUsersLast30d,
-      },
-      offres: {
-        total: totalOffres,
-        ouvertes: offresOuvertes,
-        fermees: offresFermees,
-        newLast30d: newOffresLast30d,
-        populaires: offresPopulaires,               // hottest by applications
-        lesPlusMatchées: offresLesPlusMatchées,     // highest AI match average
-                recruteursEmbauche: recruteursAvecEmbauche,   // best hiring recruiters
-      },
-      candidatures: {
-        total: totalCandidatures,
-        last7d: candidaturesLast7d,
-        parStatut: Object.fromEntries(candidaturesParStatut.map(s => [s._id, s.count])),
-      },
+      users: { totalCandidats, totalRecruteurs, comptesBloques, recruteursEnAttente: recruteursEnAttenteCount, recruteursValideParIA, newUsersLast30d },
+      offres: { total: totalOffres, ouvertes: offresOuvertes, fermees: offresFermees, newLast30d: newOffresLast30d, populaires: offresPopulaires, lesPlusMatchées: offresLesPlusMatchées, recruteursEmbauche: recruteursAvecEmbauche },
+      candidatures: { total: totalCandidatures, last7d: candidaturesLast7d, parStatut: Object.fromEntries(candidaturesParStatut.map(s => [s._id, s.count])) },
       aiVerification: aiVerifSummary,
-      engagementCandidats: {
-        totalCandidatsActifs,
-        moyCandidaturesParCandidat,
-        topCandidats,
-      },
+      engagementCandidats: { totalCandidatsActifs, moyCandidaturesParCandidat, topCandidats },
       commentaires,
       genreDistribution,
       userGrowth,
       topRecruteurs,
       aiMatch: matchStats[0]
-        ? {
-            totalMatchs: matchStats[0].totalMatchs,
-            avgScore: Math.round(matchStats[0].avgScore * 100),
-            highMatches: matchStats[0].highMatches,
-          }
+        ? { totalMatchs: matchStats[0].totalMatchs, avgScore: Math.round(matchStats[0].avgScore * 100), highMatches: matchStats[0].highMatches }
         : { totalMatchs: 0, avgScore: 0, highMatches: 0 },
-    });
+    })
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message })
   }
-};
+}
+
 // ── GET /api/admin/commentaires ───────────────────────────────────────────────
 const getAllCommentaires = async (req, res) => {
   try {
-    const page  = parseInt(req.query.page)  || 1
-    const limit = parseInt(req.query.limit) || 15
+    const page   = parseInt(req.query.page)  || 1
+    const limit  = parseInt(req.query.limit) || 15
     const filter = {}
     if (req.query.visible === 'true')  filter.visible = true
     if (req.query.visible === 'false') filter.visible = false
@@ -543,5 +376,5 @@ module.exports = {
   listerUtilisateurs, recruteursEnAttente, getUtilisateur,
   getRecruteurDossier, validerRecruteur, reVerifyDocument,
   toggleSuspension, supprimerUtilisateur,
-  toutesLesCandidatures, getDashboardStats,getAllCommentaires
+  toutesLesCandidatures, getDashboardStats, getAllCommentaires,
 }

@@ -1,11 +1,11 @@
 /**
  * verification.service.js
  *
- * Uses Gemini 1.5 Flash to analyse recruiter-uploaded documents.
+ * Uses Gemini Flash to analyse recruiter-uploaded documents.
  * Supported input formats: PDF, JPEG, PNG, WEBP.
  *
- * Returns a structured verdict that is stored on the Document record
- * and used to automatically advance the recruiter's etatValidation.
+ * FIX: AI never automatically refuses a recruiter.
+ * All final decisions (approve/refuse) are now made by an admin.
  */
 
 const mongoose = require('mongoose')
@@ -16,7 +16,6 @@ const Utilisateur = require('../models/Utilisateur')
 const { createNotification } = require('../utils/notification')
 
 // ── Prompt ────────────────────────────────────────────────────────────────────
-// We ask Gemini to respond ONLY with a JSON object — no markdown fences, no prose.
 const buildPrompt = (claimedType) => `
 You are a document verification expert for an Algerian B2B recruitment platform.
 Your job is to determine whether an uploaded file is a LEGITIMATE, READABLE business or identity document.
@@ -56,7 +55,6 @@ Respond with ONLY the JSON object. No other text.
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Stream a GridFS file into a Buffer */
 const streamToBuffer = (readStream) =>
   new Promise((resolve, reject) => {
     const chunks = []
@@ -65,41 +63,26 @@ const streamToBuffer = (readStream) =>
     readStream.on('error', err   => reject(err))
   })
 
-/** Map a file's MIME type to the inlineData mimeType Gemini accepts */
 const toGeminiMime = (mime) => {
   const map = {
-    'application/pdf':    'application/pdf',
-    'image/jpeg':         'image/jpeg',
-    'image/jpg':          'image/jpeg',
-    'image/png':          'image/png',
-    'image/webp':         'image/webp',
+    'application/pdf': 'application/pdf',
+    'image/jpeg':      'image/jpeg',
+    'image/jpg':       'image/jpeg',
+    'image/png':       'image/png',
+    'image/webp':      'image/webp',
   }
   return map[mime?.toLowerCase()] || null
 }
 
-/** Parse Gemini's text response — strip any accidental markdown fences */
 const parseGeminiResponse = (text) => {
   const cleaned = text
     .replace(/```json/gi, '')
-    .replace(/```/g,       '')
+    .replace(/```/g,      '')
     .trim()
   return JSON.parse(cleaned)
 }
 
 // ── Main verification function ────────────────────────────────────────────────
-
-/**
- * verifyDocument(documentId)
- *
- * 1. Loads the Document record from MongoDB
- * 2. Fetches the file bytes from GridFS
- * 3. Sends to Gemini 1.5 Flash
- * 4. Saves the AI verdict on the Document
- * 5. Updates the Recruiter's etatValidation
- * 6. Sends a notification to the recruiter
- *
- * Can be called after upload OR triggered manually by admin.
- */
 const verifyDocument = async (documentId) => {
   // ── 1. Load document ───────────────────────────────────────────────────────
   const doc = await Document.findById(documentId)
@@ -107,7 +90,6 @@ const verifyDocument = async (documentId) => {
   if (doc.type !== 'docrecruteur')
     throw new Error('Only recruiter documents are verified by AI')
 
-  // Guard against concurrent calls
   if (doc.verificationEnCours) {
     console.log(`[Verification] Document ${documentId} already being processed — skipping`)
     return
@@ -123,17 +105,14 @@ const verifyDocument = async (documentId) => {
     const buffer = await streamToBuffer(stream)
 
     const geminiMime = toGeminiMime(doc.formatFichier)
-    if (!geminiMime) {
+    if (!geminiMime)
       throw new Error(`Unsupported file format for AI verification: ${doc.formatFichier}`)
-    }
 
     console.log(`[Verification] Sending ${doc.nomFichier} (${geminiMime}) to Gemini…`)
 
-    // ── 3. Call Gemini 1.5 Flash ─────────────────────────────────────────────
-    const prompt = buildPrompt(doc.typeDocument)
-
+    // ── 3. Call Gemini ───────────────────────────────────────────────────────
     const result = await geminiModel.generateContent([
-      prompt,
+      buildPrompt(doc.typeDocument),
       {
         inlineData: {
           mimeType: geminiMime,
@@ -149,7 +128,6 @@ const verifyDocument = async (documentId) => {
     try {
       parsed = parseGeminiResponse(rawText)
     } catch {
-      // If Gemini doesn't return valid JSON, flag for manual review
       parsed = {
         verdict:     'necessiteRevision',
         confidence:  0,
@@ -159,7 +137,6 @@ const verifyDocument = async (documentId) => {
       }
     }
 
-    // Clamp confidence to 0-100
     parsed.confidence = Math.max(0, Math.min(100, Number(parsed.confidence) || 0))
 
     // ── 4. Save AI result on document ────────────────────────────────────────
@@ -170,7 +147,7 @@ const verifyDocument = async (documentId) => {
       raison:           parsed.raison      || '',
       flags:            Array.isArray(parsed.flags) ? parsed.flags : [],
       dateVerification: new Date(),
-      modelUtilise:     'gemini-1.5-flash',
+      modelUtilise:     'gemini-2.5-flash',
     }
 
     await Document.findByIdAndUpdate(documentId, {
@@ -180,42 +157,72 @@ const verifyDocument = async (documentId) => {
 
     console.log(`[Verification] ✅ Document ${documentId}: verdict=${parsed.verdict}, confidence=${parsed.confidence}%`)
 
-    // ── 5. Update recruiter etatValidation ───────────────────────────────────
+    // ── 5. Update recruiter etatValidation (but never auto‑refuse) ───────────
     if (!doc.idRecruteur) return aiVerification
 
     const recruteur = await Utilisateur.findById(doc.idRecruteur)
     if (!recruteur) return aiVerification
 
-    let nouveauStatut    = null
-    let notifContenu     = ''
-
-    if (parsed.verdict === 'approuve' && parsed.confidence >= 70) {
-      // Pass to admin queue
-      nouveauStatut = 'valideParIA'
-      notifContenu  = `✅ Votre document "${doc.nomFichier}" a été validé par notre système IA (${parsed.confidence}% de confiance). Un administrateur va maintenant finaliser la validation de votre compte.`
-    } else if (parsed.verdict === 'rejete' && parsed.confidence >= 60) {
-      // Reject outright — recruiter needs to re-upload
-      nouveauStatut = 'refuse'
-      notifContenu  = `❌ Votre document "${doc.nomFichier}" a été rejeté par notre système IA. Raison : ${parsed.raison}. Veuillez soumettre un document valide.`
-    } else {
-      // Needs manual admin review — leave in enAttente but update notif
-      notifContenu  = `⚠️ Votre document "${doc.nomFichier}" nécessite une vérification manuelle. Raison : ${parsed.raison}.`
+    // Never touch a recruiter already validated by a human admin
+    if (recruteur.etatValidation === 'valideParAdmin') {
+      console.log(`[Verification] Recruiter ${doc.idRecruteur} already admin-validated — skipping status update`)
+      return aiVerification
     }
 
-    if (nouveauStatut) {
+    let nouveauStatut = null
+    let notifContenu  = ''
+
+    if (parsed.verdict === 'approuve' && parsed.confidence >= 70) {
+      // Good document: ensure recruiter is in admin queue (valideParIA)
+      if (recruteur.etatValidation !== 'valideParAdmin') {
+        nouveauStatut = 'valideParIA'
+      }
+      notifContenu = `✅ Votre document "${doc.nomFichier}" a été validé par notre système IA (${parsed.confidence}% de confiance). Un administrateur va maintenant finaliser la validation de votre compte.`
+      
+    } else if (parsed.verdict === 'rejete' && parsed.confidence >= 60) {
+      // ⚠️ AI thinks the document is invalid, but we DO NOT auto-refuse the recruiter.
+      // Instead, we put them back into the pending queue (or keep them there)
+      // so an admin can review the document and decide.
+      
+      if (recruteur.etatValidation === 'valideParAdmin') {
+        // already admin‑approved – nothing to change
+      } else {
+        // Force recruiter into the admin queue if not already there
+        nouveauStatut = 'enAttente'
+      }
+      
+      notifContenu = `⚠️ Votre document "${doc.nomFichier}" semble poser problème (${parsed.raison}). Un administrateur va examiner votre dossier manuellement.`
+      
+    } else {
+      // 'necessiteRevision' or low confidence
+      if (recruteur.etatValidation === 'refuse') {
+        // If they were previously refused but just uploaded new documents,
+        // bring them back to pending so admin sees them again.
+        nouveauStatut = 'enAttente'
+      } else if (recruteur.etatValidation !== 'valideParAdmin') {
+        // Ensure they are in the queue
+        nouveauStatut = 'enAttente'
+      }
+      notifContenu = `ℹ️ Votre document "${doc.nomFichier}" nécessite une vérification manuelle. Raison : ${parsed.raison}.`
+    }
+
+    // Apply status change if needed (never set to 'refuse' automatically)
+    if (nouveauStatut && nouveauStatut !== 'refuse') {
       await Utilisateur.findByIdAndUpdate(doc.idRecruteur, {
         etatValidation: nouveauStatut,
+        $unset: { motifRefus: "" }   // clear any old refusal reason
       })
     }
 
+    // Always send a notification
     await createNotification({
       idUtilisateur: doc.idRecruteur,
       contenu:       notifContenu,
     })
 
     return aiVerification
+
   } catch (err) {
-    // Always clear the lock even on failure
     await Document.findByIdAndUpdate(documentId, { verificationEnCours: false })
     console.error(`[Verification] ❌ Error verifying document ${documentId}:`, err.message)
     throw err
