@@ -7,7 +7,7 @@ import CandidateDashboard     from './pages/CandidateDashboard';
 import OnboardingCV           from './pages/OnboardingCV';
 import EditProfilePage        from './pages/EditProfilePage';
 import EditCVPage             from './pages/editCvPage';
-import NotificationsPage      from './pages/NotificationsPage';
+import NotificationsPage      from './pages/notificationsPage';
 import RecruteurProfilePage   from './pages/RecruteurProfilePage';
 import RecruiterDashboard     from './pages/RecruiterDashboard';
 import AdminDashboard         from './pages/AdminDashboard';
