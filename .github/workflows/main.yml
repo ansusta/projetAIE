@@ -65,7 +65,8 @@ jobs:
           # 1. Start AI Service (FastAPI)
           cd ${{ github.workspace }}/aiServices 
           pip install -r requirements.txt
-          uvicorn main:app --port 8000 &
+          # Explicitly bind to 127.0.0.1 to avoid IPv6/IPv4 Docker confusion
+          uvicorn main:app --host 127.0.0.1 --port 8000 &
           
           # 2. Start the Backend (Node)
           cd ${{ github.workspace }}/backend
@@ -77,13 +78,19 @@ jobs:
           npm install
           npm run dev -- --port 3000 &
           
-          # Grace period for AI model weights to download/load
-          sleep 30
+          # SMART WAIT: Wait for the AI service OpenAPI endpoint to be fully ready (Timeout after 3 minutes)
+          echo "Waiting for AI Service to start up and serve OpenAPI spec..."
+          timeout 180 bash -c 'until curl -f -s http://127.0.0.1:8000/openapi.json > /dev/null; do echo "Waiting for AI API..."; sleep 5; done'
+          echo "AI Service is up and running!"
+          
+          # SMART WAIT: Wait for the Frontend to be fully ready
+          timeout 60 bash -c 'until curl -f -s http://127.0.0.1:3000 > /dev/null; do echo "Waiting for frontend..."; sleep 5; done'
+          echo "Frontend is up and running!"
           
       - name: ZAP Baseline Scan (Frontend)
         uses: zaproxy/action-baseline@v0.14.0
         with:
-          target: 'http://localhost:3000'
+          target: 'http://127.0.0.1:3000'
           fail_action: false
           allow_issue_writing: true
         env:
@@ -97,7 +104,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           format: openapi
-          target: 'http://localhost:8000/openapi.json'
+          target: 'http://127.0.0.1:8000/openapi.json'
           fail_action: false
           artifact_name: 'zap_api_scan'
 
