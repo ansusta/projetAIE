@@ -63,17 +63,17 @@ jobs:
       - name: Install & Start All Services
         run: |
           # 1. Start AI Service (FastAPI)
-          cd ai-service 
+          cd ${{ github.workspace }}/aiServices 
           pip install -r requirements.txt
           uvicorn main:app --port 8000 &
           
           # 2. Start the Backend (Node)
-          cd ../backend
+          cd ${{ github.workspace }}/backend
           npm install
           npm start &
           
           # 3. Start the Frontend (Vite)
-          cd ../frontend
+          cd ${{ github.workspace }}/frontend
           npm install
           npm run dev -- --port 3000 &
           
