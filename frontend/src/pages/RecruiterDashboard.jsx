@@ -967,35 +967,47 @@ export default function RecruiterDashboard() {
     </div>
   );
 
-  const renderJobs = () => (
-    <div className="space-y-6">
-      <div className="flex flex-wrap justify-between items-center gap-4">
-        <div><h2 className="text-2xl font-bold text-slate-800">Mes offres & candidats</h2><p className="text-slate-500 text-sm mt-1">Cliquez sur une offre pour voir ses candidats.</p></div>
-        <div className="flex gap-2">
-          <select value={filterStatut} onChange={e => setFilterStatut(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm">
-            <option value="toutes">Toutes les offres</option>
-            <option value="actives">Offres actives</option>
-            <option value="fermees">Offres fermées</option>
-          </select>
-          <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm">
-            <option value="date_desc">Date récente → ancienne</option>
-            <option value="date_asc">Date ancienne → récente</option>
-            <option value="candidats_desc">Candidats (décroissant)</option>
-          </select>
-          <button onClick={() => setIsJobModalOpen(true)} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold shadow-md hover:bg-indigo-700 transition-all"><Plus className="w-5 h-5" /> Créer une offre</button>
-        </div>
+const renderJobs = () => (
+  <div className="space-y-6">
+    <div className="flex justify-between items-center">
+      <div>
+        <h2 className="text-2xl font-bold text-slate-800">Mes offres & candidats</h2>
+        <p className="text-slate-500 text-sm mt-1">Cliquez sur une offre pour voir ses candidats.</p>
       </div>
-      {offresLoading ? (
-        <div className="flex justify-center h-48"><Loader2 className="w-8 h-8 text-indigo-400 animate-spin" /></div>
-      ) : filteredSortedOffres.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-dashed border-slate-200 flex flex-col items-center justify-center py-20 text-slate-400 gap-3"><Briefcase className="w-12 h-12 text-slate-300" /><p>Aucune offre trouvée.</p></div>
-      ) : (
-        <div className="space-y-4">
-          {filteredSortedOffres.map(o => <OfferAccordion key={o._id} offre={o} onDeleted={handleOfferDeleted} onUpdated={loadOffres} onOfferClosed={loadOffres} />)}
-        </div>
-      )}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={loadOffres}
+          disabled={offresLoading}
+          className="flex items-center gap-2 text-sm text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 px-3 py-2.5 rounded-xl border border-slate-200 font-semibold disabled:opacity-50 transition-colors"
+          title="Actualiser les offres"
+        >
+          <RefreshCw className={`w-4 h-4 ${offresLoading ? 'animate-spin' : ''}`} />
+        </button>
+        <button onClick={() => setIsJobModalOpen(true)}
+          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-bold transition-all shadow-md shadow-indigo-200">
+          <Plus className="w-5 h-5" /> Créer une offre
+        </button>
+      </div>
     </div>
-  );
+
+    {offresLoading ? (
+      <div className="flex items-center justify-center h-48"><Loader2 className="w-8 h-8 text-indigo-400 animate-spin" /></div>
+    ) : offres.length === 0 ? (
+      <div className="bg-white rounded-2xl border border-dashed border-slate-200 flex flex-col items-center justify-center py-16 text-slate-400 gap-3">
+        <Briefcase className="w-12 h-12 text-slate-300" />
+        <p className="font-medium">Aucune offre publiée.</p>
+        <button onClick={() => setIsJobModalOpen(true)}
+          className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-700 mt-1">
+          Publier ma première offre
+        </button>
+      </div>
+    ) : (
+      <div className="space-y-4">
+        {offres.map(o => <OfferAccordion key={o._id} offre={o} onDeleted={handleOfferDeleted} onUpdated={loadOffres} />)}
+      </div>
+    )}
+  </div>
+);
 
   const renderCalendar = () => (
     <div className="space-y-6">

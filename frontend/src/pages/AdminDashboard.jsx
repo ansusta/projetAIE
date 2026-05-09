@@ -27,6 +27,10 @@ export default function AdminDashboard() {
   const [docUrl, setDocUrl]                 = useState(null);
   const [docLoading, setDocLoading]         = useState(false);
 
+  // ── Search state ────────────────────────────────────────────────────────────
+  const [searchUsers, setSearchUsers]           = useState('');
+  const [searchApprovals, setSearchApprovals]   = useState('');
+
   // Rejection modal state
   const [rejectModal, setRejectModal]       = useState(false);
   const [rejectMotif, setRejectMotif]       = useState('');
@@ -37,8 +41,6 @@ export default function AdminDashboard() {
   const [dossierComments, setDossierComments]     = useState([]);
   const [commentsLoading, setCommentsLoading]     = useState(false);
   const [commentsShown, setCommentsShown]         = useState(false);
-
-  
 
   const getAuthHeaders = () => {
     const token = localStorage.getItem('token');
@@ -154,7 +156,6 @@ export default function AdminDashboard() {
     } catch (e) { console.error(e); }
   };
 
-  // Validate recruiter (approve)
   const handleApprove = async (id) => {
     const toastId = toast.loading('Traitement en cours...');
     try {
@@ -173,14 +174,12 @@ export default function AdminDashboard() {
     } catch (e) { toast.error('Erreur réseau.', { id: toastId }); }
   };
 
-  // Open rejection modal
   const openRejectModal = (id) => {
     setRejectTargetId(id);
     setRejectMotif('');
     setRejectModal(true);
   };
 
-  // Confirm rejection with motif
   const handleConfirmReject = async () => {
     if (!rejectMotif.trim()) {
       toast.error('Veuillez saisir un motif de refus.');
@@ -221,22 +220,22 @@ export default function AdminDashboard() {
     if (activeTab === 'overview')   fetchStats();
     if (activeTab === 'approvals')  fetchPendingRecruiters();
     if (activeTab === 'users')      fetchUsers();
-    // signalements tab is handled by the AdminSignalements component itself
   }, [activeTab]);
+
+  // ── Secure document loader ───────────────────────────────────────────────────
   useEffect(() => {
     let objectUrl = null;
 
     if (docToView?.fileId) {
       setDocLoading(true);
       fetch(`http://localhost:5000/api/documents/file/${docToView.fileId}`, {
-        headers: getAuthHeaders(), // <--- This injects your Admin Token securely!
+        headers: getAuthHeaders(),
       })
         .then((res) => {
           if (!res.ok) throw new Error('Erreur de chargement');
           return res.blob();
         })
         .then((blob) => {
-          // Explicitly define the mime type for PDFs to render correctly in the iframe
           const finalBlob = new Blob([blob], { type: docToView.formatFichier || blob.type });
           objectUrl = URL.createObjectURL(finalBlob);
           setDocUrl(objectUrl);
@@ -252,7 +251,6 @@ export default function AdminDashboard() {
       setDocUrl(null);
     }
 
-    // Cleanup memory when closing the modal
     return () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
@@ -282,7 +280,6 @@ export default function AdminDashboard() {
     erreur_ia:               'Erreur IA',
   };
 
-  // ── Star display ─────────────────────────────────────────────────────────────
   const StarDisplay = ({ note }) => (
     <div className="flex gap-0.5">
       {[1,2,3,4,5].map(n => (
@@ -290,398 +287,494 @@ export default function AdminDashboard() {
       ))}
     </div>
   );
-  // Simple bar chart for gender distribution
-const BarChart = ({ data }) => {
-  const total = Object.values(data || {}).reduce((sum, val) => sum + val, 0);
-  if (total === 0) return <p className="text-xs text-slate-400">Aucune donnée</p>;
-  return (
-    <div className="space-y-2">
-      {Object.entries(data || {}).map(([label, count]) => (
-        <div key={label} className="flex items-center gap-2 text-sm">
-          <span className="w-20 text-slate-500 capitalize">{label}</span>
-          <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-indigo-400 rounded-full"
-              style={{ width: `${(count / total) * 100}%` }}
-            />
-          </div>
-          <span className="w-10 text-right font-medium text-slate-600">{count}</span>
-        </div>
-      ))}
-    </div>
-  );
-};
 
-const renderOverview = () => {
-  if (!stats) return (
-    <div className="flex items-center justify-center h-[60vh] text-slate-500 gap-3">
-      <RefreshCw className="w-6 h-6 animate-spin" />
-      <span className="text-lg font-medium">Chargement...</span>
-    </div>
-  );
-
-  const offresPop = stats.offres?.populaires || [];
-  const offresMatch = stats.offres?.lesPlusMatchées || [];
-  const offresEmbauche = stats.offres?.meilleurEmbauche || [];
-  const engagement = stats.engagementCandidats || {};
-  const topCandidats = engagement.topCandidats || [];
-  const genre = stats.genreDistribution || {};
-  const commentaires = stats.commentaires || {};
-    const recruteursEmbauche = stats.offres?.recruteursEmbauche || [];
-  
-
-  return (
-    <div className="animate-fade-in space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-800">Vue d'ensemble</h2>
-        <p className="text-slate-500 text-sm mt-1">Les performances de MatchTalent en un coup d'œil.</p>
-      </div>
-
-      {/* ── Compteurs principaux (inchangés) ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          { title: 'Candidats',     value: stats.users.totalCandidats,  icon: Users,      color: 'text-blue-600',   bg: 'bg-blue-50'   },
-          { title: 'Recruteurs',    value: stats.users.totalRecruteurs,  icon: Building,   color: 'text-emerald-600',bg: 'bg-emerald-50'},
-          { title: 'Offres Actives',value: stats.offres.ouvertes,       icon: Briefcase,  color: 'text-indigo-600', bg: 'bg-indigo-50' },
-          { title: 'En attente',    value: stats.users.recruteursEnAttente + stats.users.recruteursValideParIA, icon: ShieldCheck, color: 'text-amber-600', bg: 'bg-amber-50'},
-        ].map((s, i) => (
-          <div key={i} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20 flex items-center gap-5">
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${s.bg} ${s.color}`}>
-              <s.icon className="w-7 h-7" />
+  // ── Simple bar chart for gender distribution ─────────────────────────────────
+  const BarChart = ({ data }) => {
+    const total = Object.values(data || {}).reduce((sum, val) => sum + val, 0);
+    if (total === 0) return <p className="text-xs text-slate-400">Aucune donnée</p>;
+    return (
+      <div className="space-y-2">
+        {Object.entries(data || {}).map(([label, count]) => (
+          <div key={label} className="flex items-center gap-2 text-sm">
+            <span className="w-20 text-slate-500 capitalize">{label}</span>
+            <div className="flex-1 h-4 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-indigo-400 rounded-full"
+                style={{ width: `${(count / total) * 100}%` }}
+              />
             </div>
-            <div>
-              <p className="text-slate-500 text-sm font-medium">{s.title}</p>
-              <p className="text-2xl font-black text-slate-800">{s.value}</p>
-            </div>
+            <span className="w-10 text-right font-medium text-slate-600">{count}</span>
           </div>
         ))}
       </div>
+    );
+  };
 
-      {/* ── Activité IA (inchangé) ── */}
-      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
-        <div className="flex items-center gap-3 mb-4">
-          <Activity className="w-6 h-6 text-indigo-600" />
-          <h3 className="text-lg font-bold text-slate-800">Activité de l'Intelligence Artificielle</h3>
+  // ── RENDER: Overview ─────────────────────────────────────────────────────────
+  const renderOverview = () => {
+    if (!stats) return (
+      <div className="flex items-center justify-center h-[60vh] text-slate-500 gap-3">
+        <RefreshCw className="w-6 h-6 animate-spin" />
+        <span className="text-lg font-medium">Chargement...</span>
+      </div>
+    );
+
+    const offresPop        = stats.offres?.populaires || [];
+    const offresMatch      = stats.offres?.lesPlusMatchées || [];
+    const engagement       = stats.engagementCandidats || {};
+    const topCandidats     = engagement.topCandidats || [];
+    const genre            = stats.genreDistribution || {};
+    const commentaires     = stats.commentaires || {};
+    const recruteursEmbauche = stats.offres?.recruteursEmbauche || [];
+
+    return (
+      <div className="animate-fade-in space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800">Vue d'ensemble</h2>
+          <p className="text-slate-500 text-sm mt-1">Les performances de MatchTalent en un coup d'œil.</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mt-6">
-          <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-            <p className="text-slate-500 mb-1 font-medium">Total Matchs Effectués</p>
-            <p className="text-2xl font-black text-slate-800">{stats.aiMatch?.totalMatchs || 0}</p>
-          </div>
-          <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-100">
-            <p className="text-emerald-700 mb-1 font-medium">Documents Approuvés</p>
-            <p className="text-2xl font-black text-emerald-600">{stats.aiVerification.approuves}</p>
-          </div>
-          <div className="bg-red-50 p-5 rounded-2xl border border-red-100">
-            <p className="text-red-700 mb-1 font-medium">Documents Rejetés</p>
-            <p className="text-2xl font-black text-red-600">{stats.aiVerification.rejetes}</p>
-          </div>
+
+        {/* ── Compteurs principaux ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[
+            { title: 'Candidats',     value: stats.users.totalCandidats,  icon: Users,      color: 'text-blue-600',   bg: 'bg-blue-50'   },
+            { title: 'Recruteurs',    value: stats.users.totalRecruteurs,  icon: Building,   color: 'text-emerald-600',bg: 'bg-emerald-50'},
+            { title: 'Offres Actives',value: stats.offres.ouvertes,       icon: Briefcase,  color: 'text-indigo-600', bg: 'bg-indigo-50' },
+            { title: 'En attente',    value: stats.users.recruteursEnAttente + stats.users.recruteursValideParIA, icon: ShieldCheck, color: 'text-amber-600', bg: 'bg-amber-50'},
+          ].map((s, i) => (
+            <div key={i} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20 flex items-center gap-5">
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${s.bg} ${s.color}`}>
+                <s.icon className="w-7 h-7" />
+              </div>
+              <div>
+                <p className="text-slate-500 text-sm font-medium">{s.title}</p>
+                <p className="text-2xl font-black text-slate-800">{s.value}</p>
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
 
-      {/* ── OFFRES LES PLUS POPULAIRES (candidatures) ── */}
-      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
-        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-          <Briefcase className="w-5 h-5 text-indigo-600" /> Offres les plus demandées (30 derniers jours)
-        </h3>
-        {offresPop.length === 0 ? (
-          <p className="text-slate-400 text-sm">Aucune candidature récente.</p>
-        ) : (
-          <div className="space-y-4">
-            {offresPop.map((o, i) => (
-              <div key={o.offreId} className="flex items-center gap-4">
-                <span className="text-sm font-bold text-slate-400 w-6">{i+1}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-slate-800 text-sm truncate">{o.titre}</p>
-                  <p className="text-xs text-slate-500">{o.localisation} · {o.typeContrat}</p>
-                  <div className="mt-1.5 h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-indigo-500 rounded-full"
-                      style={{ width: `${Math.min(100, (o.totalCandidatures / (offresPop[0]?.totalCandidatures || 1)) * 100)}%` }}
-                    />
-                  </div>
-                </div>
-                <span className="text-sm font-black text-indigo-600 whitespace-nowrap">{o.totalCandidatures} candidatures</span>
-              </div>
-            ))}
+        {/* ── Activité IA ── */}
+        <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
+          <div className="flex items-center gap-3 mb-4">
+            <Activity className="w-6 h-6 text-indigo-600" />
+            <h3 className="text-lg font-bold text-slate-800">Activité de l'Intelligence Artificielle</h3>
           </div>
-        )}
-      </div>
-
-      {/* ── MEILLEURS SCORES AI ── */}
-      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
-        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-          <Percent className="w-5 h-5 text-indigo-600" /> Offres avec le meilleur score de matching AI
-        </h3>
-        {offresMatch.length === 0 ? (
-          <p className="text-slate-400 text-sm">Aucun match calculé.</p>
-        ) : (
-          <div className="space-y-4">
-            {offresMatch.map((o, i) => (
-              <div key={o.offreId} className="flex items-center gap-4">
-                <span className="text-sm font-bold text-slate-400 w-6">{i+1}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-slate-800 text-sm truncate">{o.titre}</p>
-                  <div className="mt-1.5 h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-emerald-500 rounded-full"
-                      style={{ width: `${o.avgScore}%` }}
-                    />
-                  </div>
-                </div>
-                <span className="text-sm font-black text-emerald-600 whitespace-nowrap">{o.avgScore}% moyen</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── RECRUTEURS AVEC LE MEILLEUR TAUX D'EMBAUCHE ── */}
-      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
-        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-          <CheckCircle className="w-5 h-5 text-indigo-600" /> Recruteurs avec le meilleur taux d'embauche
-        </h3>
-        {recruteursEmbauche.length === 0 ? (
-          <p className="text-slate-400 text-sm">Aucune embauche enregistrée.</p>
-        ) : (
-          <div className="space-y-4">
-            {recruteursEmbauche.map((r, i) => (
-              <div key={r.recruteurId} className="flex items-center gap-4">
-                <span className="text-sm font-bold text-slate-400 w-6">{i+1}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-slate-800 text-sm truncate">
-                    {r.nomEntreprise || r.email}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {r.embauchees} embauches / {r.totalCandidatures} candidatures
-                  </p>
-                  <div className="mt-1.5 h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-amber-500 rounded-full"
-                      style={{ width: `${r.ratioEmbauche}%` }}
-                    />
-                  </div>
-                </div>
-                <span className="text-sm font-black text-amber-600 whitespace-nowrap">
-                  {r.ratioEmbauche}%
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── ENGAGEMENT CANDIDATS ── */}
-      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
-        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-          <Users className="w-5 h-5 text-indigo-600" /> Engagement des candidats
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-            <p className="text-slate-500 mb-1 font-medium">Candidats actifs</p>
-            <p className="text-2xl font-black text-slate-800">{engagement.totalCandidatsActifs || 0}</p>
-          </div>
-          <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-            <p className="text-slate-500 mb-1 font-medium">Moyenne de candidatures</p>
-            <p className="text-2xl font-black text-slate-800">{engagement.moyCandidaturesParCandidat || 0}</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mt-6">
+            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+              <p className="text-slate-500 mb-1 font-medium">Total Matchs Effectués</p>
+              <p className="text-2xl font-black text-slate-800">{stats.aiMatch?.totalMatchs || 0}</p>
+            </div>
+            <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-100">
+              <p className="text-emerald-700 mb-1 font-medium">Documents Approuvés</p>
+              <p className="text-2xl font-black text-emerald-600">{stats.aiVerification.approuves}</p>
+            </div>
+            <div className="bg-red-50 p-5 rounded-2xl border border-red-100">
+              <p className="text-red-700 mb-1 font-medium">Documents Rejetés</p>
+              <p className="text-2xl font-black text-red-600">{stats.aiVerification.rejetes}</p>
+            </div>
           </div>
         </div>
-        {topCandidats.length > 0 && (
-          <div className="mt-6">
-            <p className="text-sm font-semibold text-slate-600 mb-3">Top 5 candidats les plus actifs</p>
-            <div className="space-y-3">
-              {topCandidats.map((c, i) => (
-                <div key={c.candidatId} className="flex items-center gap-3">
+
+        {/* ── Offres les plus populaires ── */}
+        <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
+          <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <Briefcase className="w-5 h-5 text-indigo-600" /> Offres les plus demandées (30 derniers jours)
+          </h3>
+          {offresPop.length === 0 ? (
+            <p className="text-slate-400 text-sm">Aucune candidature récente.</p>
+          ) : (
+            <div className="space-y-4">
+              {offresPop.map((o, i) => (
+                <div key={o.offreId} className="flex items-center gap-4">
                   <span className="text-sm font-bold text-slate-400 w-6">{i+1}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-800">{c.prenom} {c.nom}</p>
-                    <p className="text-xs text-slate-500">{c.email}</p>
+                    <p className="font-semibold text-slate-800 text-sm truncate">{o.titre}</p>
+                    <p className="text-xs text-slate-500">{o.localisation} · {o.typeContrat}</p>
+                    <div className="mt-1.5 h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-indigo-500 rounded-full"
+                        style={{ width: `${Math.min(100, (o.totalCandidatures / (offresPop[0]?.totalCandidatures || 1)) * 100)}%` }}
+                      />
+                    </div>
                   </div>
-                  <span className="text-sm font-bold text-indigo-600">{c.totalApplications} candidatures</span>
+                  <span className="text-sm font-black text-indigo-600 whitespace-nowrap">{o.totalCandidatures} candidatures</span>
                 </div>
               ))}
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* ── GENRE ── */}
-      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
-        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-          <Users className="w-5 h-5 text-indigo-600" /> Répartition par genre
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <p className="text-sm font-semibold text-slate-600 mb-3">Candidats</p>
-            <BarChart data={genre.candidats || {}} />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-slate-600 mb-3">Recruteurs</p>
-            <BarChart data={genre.recruteurs || {}} />
-          </div>
+          )}
         </div>
-      </div>
 
-      {/* ── AVIS & COMMENTAIRES ── */}
-      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
-        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-          <MessageSquare className="w-5 h-5 text-indigo-600" /> Avis & commentaires
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-            <p className="text-slate-500 mb-1 font-medium">Total commentaires</p>
-            <p className="text-2xl font-black text-slate-800">{commentaires.total || 0}</p>
-          </div>
-          <div className="bg-amber-50 p-5 rounded-2xl border border-amber-100">
-            <p className="text-amber-700 mb-1 font-medium">Note moyenne</p>
-            <div className="flex items-center gap-2">
-              <p className="text-2xl font-black text-amber-600">{commentaires.noteMoyenne || 0}</p>
-              <StarDisplay note={Math.round(commentaires.noteMoyenne) || 0} />
+        {/* ── Meilleurs scores AI ── */}
+        <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
+          <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <Percent className="w-5 h-5 text-indigo-600" /> Offres avec le meilleur score de matching AI
+          </h3>
+          {offresMatch.length === 0 ? (
+            <p className="text-slate-400 text-sm">Aucun match calculé.</p>
+          ) : (
+            <div className="space-y-4">
+              {offresMatch.map((o, i) => (
+                <div key={o.offreId} className="flex items-center gap-4">
+                  <span className="text-sm font-bold text-slate-400 w-6">{i+1}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-slate-800 text-sm truncate">{o.titre}</p>
+                    <div className="mt-1.5 h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-500 rounded-full"
+                        style={{ width: `${o.avgScore}%` }}
+                      />
+                    </div>
+                  </div>
+                  <span className="text-sm font-black text-emerald-600 whitespace-nowrap">{o.avgScore}% moyen</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Recruteurs avec le meilleur taux d'embauche ── */}
+        <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
+          <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-indigo-600" /> Recruteurs avec le meilleur taux d'embauche
+          </h3>
+          {recruteursEmbauche.length === 0 ? (
+            <p className="text-slate-400 text-sm">Aucune embauche enregistrée.</p>
+          ) : (
+            <div className="space-y-4">
+              {recruteursEmbauche.map((r, i) => (
+                <div key={r.recruteurId} className="flex items-center gap-4">
+                  <span className="text-sm font-bold text-slate-400 w-6">{i+1}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-slate-800 text-sm truncate">
+                      {r.nomEntreprise || r.email}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {r.embauchees} embauches / {r.totalCandidatures} candidatures
+                    </p>
+                    <div className="mt-1.5 h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-amber-500 rounded-full"
+                        style={{ width: `${r.ratioEmbauche}%` }}
+                      />
+                    </div>
+                  </div>
+                  <span className="text-sm font-black text-amber-600 whitespace-nowrap">
+                    {r.ratioEmbauche}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Engagement candidats ── */}
+        <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
+          <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <Users className="w-5 h-5 text-indigo-600" /> Engagement des candidats
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+              <p className="text-slate-500 mb-1 font-medium">Candidats actifs</p>
+              <p className="text-2xl font-black text-slate-800">{engagement.totalCandidatsActifs || 0}</p>
+            </div>
+            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+              <p className="text-slate-500 mb-1 font-medium">Moyenne de candidatures</p>
+              <p className="text-2xl font-black text-slate-800">{engagement.moyCandidaturesParCandidat || 0}</p>
             </div>
           </div>
-          <div className="bg-red-50 p-5 rounded-2xl border border-red-100">
-            <p className="text-red-700 mb-1 font-medium">Masqués</p>
-            <p className="text-2xl font-black text-red-600">{commentaires.hidden || 0}</p>
+          {topCandidats.length > 0 && (
+            <div className="mt-6">
+              <p className="text-sm font-semibold text-slate-600 mb-3">Top 5 candidats les plus actifs</p>
+              <div className="space-y-3">
+                {topCandidats.map((c, i) => (
+                  <div key={c.candidatId} className="flex items-center gap-3">
+                    <span className="text-sm font-bold text-slate-400 w-6">{i+1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-800">{c.prenom} {c.nom}</p>
+                      <p className="text-xs text-slate-500">{c.email}</p>
+                    </div>
+                    <span className="text-sm font-bold text-indigo-600">{c.totalApplications} candidatures</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Répartition par genre ── */}
+        <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
+          <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <Users className="w-5 h-5 text-indigo-600" /> Répartition par genre
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <p className="text-sm font-semibold text-slate-600 mb-3">Candidats</p>
+              <BarChart data={genre.candidats || {}} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-600 mb-3">Recruteurs</p>
+              <BarChart data={genre.recruteurs || {}} />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* ── CROISSANCE UTILISATEURS (30 jours) ── */}
-      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
-        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-          <Activity className="w-5 h-5 text-indigo-600" /> Croissance des inscriptions (30 jours)
-        </h3>
-        {stats.userGrowth?.length > 0 ? (
-          <div className="space-y-2">
-            {stats.userGrowth.map(day => (
-              <div key={day.date} className="flex items-center gap-3 text-sm">
-                <span className="w-28 text-slate-500 font-medium">{day.date}</span>
-                <div className="flex-1 h-5 bg-indigo-50 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-indigo-500 rounded-full flex items-center justify-end pr-2"
-                    style={{ width: `${Math.min(100, (day.count / Math.max(...stats.userGrowth.map(d => d.count))) * 100)}%` }}
-                  >
-                    <span className="text-[10px] font-bold text-white">{day.count}</span>
+        {/* ── Avis & commentaires ── */}
+        <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
+          <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-indigo-600" /> Avis & commentaires
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+              <p className="text-slate-500 mb-1 font-medium">Total commentaires</p>
+              <p className="text-2xl font-black text-slate-800">{commentaires.total || 0}</p>
+            </div>
+            <div className="bg-amber-50 p-5 rounded-2xl border border-amber-100">
+              <p className="text-amber-700 mb-1 font-medium">Note moyenne</p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-black text-amber-600">{commentaires.noteMoyenne || 0}</p>
+                <StarDisplay note={Math.round(commentaires.noteMoyenne) || 0} />
+              </div>
+            </div>
+            <div className="bg-red-50 p-5 rounded-2xl border border-red-100">
+              <p className="text-red-700 mb-1 font-medium">Masqués</p>
+              <p className="text-2xl font-black text-red-600">{commentaires.hidden || 0}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Croissance inscriptions ── */}
+        <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20">
+          <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <Activity className="w-5 h-5 text-indigo-600" /> Croissance des inscriptions (30 jours)
+          </h3>
+          {stats.userGrowth?.length > 0 ? (
+            <div className="space-y-2">
+              {stats.userGrowth.map(day => (
+                <div key={day.date} className="flex items-center gap-3 text-sm">
+                  <span className="w-28 text-slate-500 font-medium">{day.date}</span>
+                  <div className="flex-1 h-5 bg-indigo-50 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-indigo-500 rounded-full flex items-center justify-end pr-2"
+                      style={{ width: `${Math.min(100, (day.count / Math.max(...stats.userGrowth.map(d => d.count))) * 100)}%` }}
+                    >
+                      <span className="text-[10px] font-bold text-white">{day.count}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-slate-400 text-sm">Données insuffisantes.</p>
-        )}
+              ))}
+            </div>
+          ) : (
+            <p className="text-slate-400 text-sm">Données insuffisantes.</p>
+          )}
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
   // ── RENDER: Approvals list ───────────────────────────────────────────────────
-  const renderApprovalsList = () => (
-    <div className="animate-fade-in space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">Vérification des Entreprises</h2>
-          <p className="text-slate-500 text-sm mt-1">Examinez les dossiers en attente ou pré-validés par l'IA.</p>
+  const renderApprovalsList = () => {
+    const filteredRecruiters = searchApprovals.trim()
+      ? pendingRecruiters.filter(r => {
+          const q = searchApprovals.toLowerCase();
+          return (
+            (r.nomEntreprise || '').toLowerCase().includes(q) ||
+            (r.nom || '').toLowerCase().includes(q) ||
+            (r.prenom || '').toLowerCase().includes(q) ||
+            (r.email || '').toLowerCase().includes(q) ||
+            (r.secteurActivite || '').toLowerCase().includes(q)
+          );
+        })
+      : pendingRecruiters;
+
+    return (
+      <div className="animate-fade-in space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800">Vérification des Entreprises</h2>
+            <p className="text-slate-500 text-sm mt-1">Examinez les dossiers en attente ou pré-validés par l'IA.</p>
+          </div>
+          <div className="relative">
+            <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Rechercher par nom, email…"
+              value={searchApprovals}
+              onChange={e => setSearchApprovals(e.target.value)}
+              className="pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none text-sm w-72"
+            />
+            {searchApprovals && (
+              <button
+                onClick={() => setSearchApprovals('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
-        <div className="relative">
-          <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-          <input type="text" placeholder="Rechercher..." className="pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none text-sm w-72" />
+
+        {searchApprovals.trim() && (
+          <p className="text-sm text-slate-500">
+            {filteredRecruiters.length} résultat{filteredRecruiters.length !== 1 ? 's' : ''} pour «&nbsp;{searchApprovals}&nbsp;»
+          </p>
+        )}
+
+        <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/40 border border-slate-100 overflow-hidden">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50/50 text-slate-400 text-sm border-b border-slate-100">
+                <th className="font-medium py-4 px-6">Entreprise & Contact</th>
+                <th className="font-medium py-4 px-6 text-center">Pré-analyse IA</th>
+                <th className="font-medium py-4 px-6 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRecruiters.length === 0 ? (
+                <tr>
+                  <td colSpan="3" className="py-12 text-center text-slate-500 font-medium">
+                    {searchApprovals.trim()
+                      ? `Aucun résultat pour « ${searchApprovals} »`
+                      : 'Aucune entreprise en attente de validation.'}
+                  </td>
+                </tr>
+              ) : filteredRecruiters.map(recruteur => (
+                <tr key={recruteur._id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                  <td className="py-4 px-6 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-100 text-indigo-600 flex items-center justify-center font-bold">
+                      <Building className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800 mb-0.5">
+                        {recruteur.nomEntreprise || recruteur.nom || 'Non spécifié'}
+                      </p>
+                      <p className="text-xs text-slate-500">{recruteur.email}</p>
+                      {recruteur.secteurActivite && (
+                        <p className="text-xs text-indigo-500 mt-0.5">{recruteur.secteurActivite}</p>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-4 px-6 text-center">
+                    <span className={`inline-flex items-center gap-1.5 font-bold text-sm px-3 py-1 rounded-lg ${recruteur.etatValidation === 'valideParIA' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                      {recruteur.etatValidation === 'valideParIA' ? <ShieldCheck className="w-4 h-4" /> : <RefreshCw className="w-4 h-4" />}
+                      {recruteur.etatValidation === 'valideParIA' ? 'Favorable' : 'En attente'}
+                    </span>
+                  </td>
+                  <td className="py-4 px-6 text-right">
+                    <button onClick={() => fetchDossier(recruteur._id)} className="inline-flex items-center gap-2 bg-white border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl text-sm font-bold transition-all">
+                      Examiner <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
-      <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/40 border border-slate-100 overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-50/50 text-slate-400 text-sm border-b border-slate-100">
-              <th className="font-medium py-4 px-6">Entreprise & Contact</th>
-              <th className="font-medium py-4 px-6 text-center">Pré-analyse IA</th>
-              <th className="font-medium py-4 px-6 text-right">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pendingRecruiters.length === 0 ? (
-              <tr>
-                <td colSpan="3" className="py-12 text-center text-slate-500 font-medium">Aucune entreprise en attente de validation.</td>
-              </tr>
-            ) : pendingRecruiters.map(recruteur => (
-              <tr key={recruteur._id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                <td className="py-4 px-6 flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-100 text-indigo-600 flex items-center justify-center font-bold">
-                    <Building className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-slate-800 mb-0.5">{recruteur.nomEntreprise || recruteur.nom || 'Non spécifié'}</p>
-                    <p className="text-xs text-slate-500">{recruteur.email}</p>
-                  </div>
-                </td>
-                <td className="py-4 px-6 text-center">
-                  <span className={`inline-flex items-center gap-1.5 font-bold text-sm px-3 py-1 rounded-lg ${recruteur.etatValidation === 'valideParIA' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                    {recruteur.etatValidation === 'valideParIA' ? <ShieldCheck className="w-4 h-4" /> : <RefreshCw className="w-4 h-4" />}
-                    {recruteur.etatValidation === 'valideParIA' ? 'Favorable' : 'En attente'}
-                  </span>
-                </td>
-                <td className="py-4 px-6 text-right">
-                  <button onClick={() => fetchDossier(recruteur._id)} className="inline-flex items-center gap-2 bg-white border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl text-sm font-bold transition-all">
-                    Examiner <ChevronRight className="w-4 h-4" />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
+    );
+  };
 
   // ── RENDER: Users ────────────────────────────────────────────────────────────
-  const renderUsers = () => (
-    <div className="animate-fade-in space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">Gestion des Utilisateurs</h2>
-          <p className="text-slate-500 text-sm mt-1">Gérez tous les comptes Candidats et Recruteurs.</p>
+  const renderUsers = () => {
+    const filteredUsers = searchUsers.trim()
+      ? usersList.filter(user => {
+          const q = searchUsers.toLowerCase();
+          const displayName = user.role === 'recruteur'
+            ? (user.nomEntreprise || '')
+            : `${user.prenom || ''} ${user.nom || ''}`.trim();
+          return (
+            displayName.toLowerCase().includes(q) ||
+            (user.email || '').toLowerCase().includes(q) ||
+            (user.role || '').toLowerCase().includes(q) ||
+            (user.statusCompte || '').toLowerCase().includes(q)
+          );
+        })
+      : usersList;
+
+    return (
+      <div className="animate-fade-in space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800">Gestion des Utilisateurs</h2>
+            <p className="text-slate-500 text-sm mt-1">Gérez tous les comptes Candidats et Recruteurs.</p>
+          </div>
+          <div className="relative">
+            <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Nom, email, rôle…"
+              value={searchUsers}
+              onChange={e => setSearchUsers(e.target.value)}
+              className="pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none text-sm w-72"
+            />
+            {searchUsers && (
+              <button
+                onClick={() => setSearchUsers('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
-        <div className="relative">
-          <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-          <input type="text" placeholder="Rechercher..." className="pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none text-sm w-72" />
-        </div>
-      </div>
-      <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/40 border border-slate-100 overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-50/50 text-slate-400 text-sm border-b border-slate-100">
-              <th className="font-medium py-4 px-6">Utilisateur</th>
-              <th className="font-medium py-4 px-6">Rôle</th>
-              <th className="font-medium py-4 px-6 text-center">Statut Compte</th>
-              <th className="font-medium py-4 px-6 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {usersList.map(user => (
-              <tr key={user._id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                <td className="py-4 px-6">
-                  <p className="font-bold text-slate-800">{user.nom} {user.prenom}</p>
-                  <p className="text-xs text-slate-500">{user.email}</p>
-                </td>
-                <td className="py-4 px-6 text-sm font-medium text-slate-600 capitalize">{user.role}</td>
-                <td className="py-4 px-6 text-center">
-                  <span className={`inline-flex px-2.5 py-1 rounded-md text-xs font-bold ${user.statusCompte === 'actif' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                    {user.statusCompte}
-                  </span>
-                </td>
-                <td className="py-4 px-6 text-right">
-                  <button onClick={() => handleToggleSuspend(user._id)}
-                    className={`p-2 transition-colors ${user.statusCompte === 'actif' ? 'text-slate-400 hover:text-red-600' : 'text-red-500 hover:text-emerald-600'}`}
-                    title={user.statusCompte === 'actif' ? 'Bloquer le compte' : 'Réactiver le compte'}>
-                    <Ban className="w-5 h-5" />
-                  </button>
-                </td>
+
+        {searchUsers.trim() && (
+          <p className="text-sm text-slate-500">
+            {filteredUsers.length} résultat{filteredUsers.length !== 1 ? 's' : ''} pour «&nbsp;{searchUsers}&nbsp;»
+          </p>
+        )}
+
+        <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/40 border border-slate-100 overflow-hidden">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50/50 text-slate-400 text-sm border-b border-slate-100">
+                <th className="font-medium py-4 px-6">Utilisateur</th>
+                <th className="font-medium py-4 px-6">Rôle</th>
+                <th className="font-medium py-4 px-6 text-center">Statut Compte</th>
+                <th className="font-medium py-4 px-6 text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan="4" className="py-12 text-center text-slate-500 font-medium">
+                    {searchUsers.trim()
+                      ? `Aucun résultat pour « ${searchUsers} »`
+                      : 'Aucun utilisateur trouvé.'}
+                  </td>
+                </tr>
+              ) : filteredUsers.map(user => (
+                <tr key={user._id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                  <td className="py-4 px-6">
+                    <p className="font-bold text-slate-800">
+                      {user.role === 'recruteur'
+                        ? (user.nomEntreprise || <span className="text-slate-400 font-normal italic">Sans nom</span>)
+                        : (`${user.prenom || ''} ${user.nom || ''}`.trim() || <span className="text-slate-400 font-normal italic">Sans nom</span>)
+                      }
+                    </p>
+                    <p className="text-xs text-slate-500">{user.email}</p>
+                  </td>
+                  <td className="py-4 px-6 text-sm font-medium text-slate-600 capitalize">{user.role}</td>
+                  <td className="py-4 px-6 text-center">
+                    <span className={`inline-flex px-2.5 py-1 rounded-md text-xs font-bold ${user.statusCompte === 'actif' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                      {user.statusCompte}
+                    </span>
+                  </td>
+                  <td className="py-4 px-6 text-right">
+                    <button onClick={() => handleToggleSuspend(user._id)}
+                      className={`p-2 transition-colors ${user.statusCompte === 'actif' ? 'text-slate-400 hover:text-red-600' : 'text-red-500 hover:text-emerald-600'}`}
+                      title={user.statusCompte === 'actif' ? 'Bloquer le compte' : 'Réactiver le compte'}>
+                      <Ban className="w-5 h-5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // ── RENDER: Dossier detail ───────────────────────────────────────────────────
   const renderDossier = () => {
@@ -773,7 +866,6 @@ const renderOverview = () => {
                     ai?.verdict === 'necessiteRevision' ? 'border-amber-200'   :
                                                           'border-slate-200'
                   }`}>
-                    {/* Document header row */}
                     <div className="flex items-center gap-4 p-4 bg-white">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${cfg.cls}`}>
                         <FileText className="w-5 h-5" />
@@ -787,14 +879,12 @@ const renderOverview = () => {
                           )}
                         </div>
                       </div>
-                      {/* Verdict badge */}
                       <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg border shrink-0 ${cfg.cls}`}>
                         <VerdictIcon className="w-3.5 h-3.5" />
                         {cfg.label}
                       </span>
                     </div>
 
-                    {/* AI details panel */}
                     {ai && (
                       <div className={`px-4 pb-4 pt-1 ${
                         ai.verdict === 'approuve'          ? 'bg-emerald-50/40' :
@@ -802,7 +892,6 @@ const renderOverview = () => {
                         ai.verdict === 'necessiteRevision' ? 'bg-amber-50/40'   :
                                                               'bg-slate-50/40'
                       }`}>
-                        {/* Confidence bar */}
                         <div className="flex items-center gap-3 mb-3">
                           <span className="text-xs font-semibold text-slate-500 w-20 shrink-0">Confiance IA</span>
                           <div className="flex-1 bg-slate-200 rounded-full h-2 overflow-hidden">
@@ -820,7 +909,6 @@ const renderOverview = () => {
                           }`}>{ai.confidence}%</span>
                         </div>
 
-                        {/* Reason */}
                         {ai.raison && (
                           <div className="flex items-start gap-2 mb-3">
                             <Info className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
@@ -828,7 +916,6 @@ const renderOverview = () => {
                           </div>
                         )}
 
-                        {/* Flags */}
                         {ai.flags && ai.flags.length > 0 && (
                           <div className="flex flex-wrap gap-1.5 mt-2">
                             {ai.flags.map(flag => (
@@ -839,14 +926,12 @@ const renderOverview = () => {
                           </div>
                         )}
 
-                        {/* Model + date */}
                         <p className="text-[10px] text-slate-400 mt-2">
                           Analysé par {ai.modelUtilise} · {new Date(ai.dateVerification).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
                     )}
 
-                    {/* Actions */}
                     <div className="flex gap-2 px-4 pb-4">
                       <button onClick={() => handleTriggerVerification(doc._id)}
                         className="flex items-center gap-1.5 bg-white hover:bg-amber-50 text-slate-600 hover:text-amber-600 border border-slate-200 hover:border-amber-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
@@ -1023,10 +1108,7 @@ const renderOverview = () => {
           {!isLoading && activeTab === 'approvals' && !selectedDossier && renderApprovalsList()}
           {!isLoading && activeTab === 'approvals' && selectedDossier  && renderDossier()}
 
-          {/* Signalements tab — component manages its own loading */}
           {activeTab === 'signalements' && !selectedDossier && <AdminSignalements />}
-
-          {/* Avis tab — component manages its own loading */}
           {activeTab === 'commentaires' && !selectedDossier && <AdminCommentaires />}
         </div>
       </main>
@@ -1082,7 +1164,6 @@ const renderOverview = () => {
       )}
 
       {/* ── Document viewer modal ── */}
-{/* ── Document viewer modal ── */}
       {docToView && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl flex flex-col overflow-hidden max-h-[90vh]">
@@ -1108,8 +1189,7 @@ const renderOverview = () => {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
-            {/* --- UPDATED VIEWER AREA --- */}
+
             <div className="flex-1 bg-slate-100 p-4 overflow-auto min-h-[50vh] flex items-center justify-center">
               {!docToView.fileId ? (
                 <div className="text-center text-slate-400 flex flex-col items-center">
@@ -1142,7 +1222,6 @@ const renderOverview = () => {
                 </div>
               )}
             </div>
-            {/* --- END OF UPDATED VIEWER AREA --- */}
 
             <div className="p-4 border-t border-slate-100 bg-white flex justify-end">
               <button onClick={() => setDocToView(null)} className="px-6 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm transition-colors">
