@@ -886,7 +886,7 @@ export default function RecruiterDashboard() {
     loadOffres(); // ← recharge forcée après création
   };
   const handleOfferDeleted = (id) => setOffres(prev => prev.filter(o => o._id !== id));
-  const handleLogout = () => { localStorage.clear(); navigate('/login'); };
+  const handleLogout = () => { localStorage.clear(); navigate('/'); };
 
   const renderOverview = () => (
     <div className="space-y-8">
